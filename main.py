@@ -6,6 +6,10 @@ import random
 import urllib.request
 from dotenv import load_dotenv
 import re
+import pickle
+
+import pyrankvote
+from pyrankvote import Candidate, Ballot
 
 from discord.ext import commands
 from discord.channel import DMChannel
@@ -29,6 +33,8 @@ URL = os.getenv('GUILD_URL')
 # This should be extracted from your .ASPXAUTH cookie
 COOKIE = os.getenv('GUILD_COOKIE')
 
+VOTERS_FILE = 'voters.bak'
+
 # Create the bot and specify to only look for messages starting with '?'
 bot = commands.Bot(command_prefix='?')
 
@@ -36,6 +42,12 @@ bot = commands.Bot(command_prefix='?')
 # Format = {<DiscordUsername>: <StudentNumber>}
 registered_members = {"danyc0#7106": 1733780, "RON": 0}
 registered_members = {}
+try:
+	with open(VOTERS_FILE,'rb') as infile:
+		registered_members = pickle.load(infile)
+except IOError:
+    print("No registered_members file:", VOTERS_FILE)
+
 # Format = {<Post>: [(<StudentNumber>, <Bio>, <Image>), ...]}
 standing = {'pgr': [(1733780, "I'm Great", None)]}
 standing = {}
@@ -110,6 +122,9 @@ async def register(context, student_number: int):
     else:
         output_str = 'Looks like you\'re not a member yet, please become a member here: https://cssbham.com/join'
         print(author, "has failed to register")
+
+    with open(VOTERS_FILE,'wb') as outfile:
+        pickle.dump(registered_members, outfile)
         
     await context.send(output_str)
 
@@ -187,7 +202,7 @@ async def standdown(context, post=None):
 @bot.command(name='posts', help='Prints the posts available to stand for in this election')
 async def posts(context):
     # Only respond if used in a channel called 'voting'
-    if context.channel.name != 'voting':
+    if isinstance(context.channel, DMChannel) or context.channel.name != 'voting':
         return
     output_str = '```'
     for post in standing:
@@ -207,25 +222,25 @@ async def candidates(context, post=None):
     if post:
         if post in standing:
             random.shuffle(standing[post])
-            await context.send(post + ":")
+            await context.send("Candidates standing for " + post + ":")
             for candidate in standing[post]:
                 if not candidate[2]:
-                    await context.send(content=members[candidate[0]] + ":" + candidate[1])
+                    await context.send(content=" - " + members[candidate[0]] + ": " + candidate[1])
                 else:
-                    await context.send(content=members[candidate[0]] + ":" + candidate[1], file=candidate[2])
-                await context.send('--------')
+                    await context.send(content=" - " + members[candidate[0]] + ": " + candidate[1], file=candidate[2])
+            await context.send('--------')
         else:
             await context.send('Looks like that post isn\'t in this election, use ?posts to see the posts up for election`')
     else:
         for post in standing:
             random.shuffle(standing[post])
-            await context.send(post + ":")
+            await context.send("Candidates standing for " + post + ":")
             for candidate in standing[post]:
                 if not candidate[2]:
-                    await context.send(content=members[candidate[0]] + ":" + candidate[1])
+                    await context.send(content=" - " + members[candidate[0]] + ":" + candidate[1])
                 else:
-                    await context.send(content=members[candidate[0]] + ":" + candidate[1], file=candidate[2])
-                await context.send('--------')
+                    await context.send(content=" - " + members[candidate[0]] + ":" + candidate[1], file=candidate[2])
+            await context.send('--------')
 
 
 @bot.command(name='rules', help='Prints the rules and procedures for the election')
@@ -237,7 +252,10 @@ async def rules(context):
 
 # Prototyped # make the post .tolower ed
 @bot.command(name='setup', help='Creates the specified post')
-async def setup(context, post, ron=True):
+async def setup(context, *post):
+    # FIX THIS
+    ron = True
+    post = ' '.join(post)
     # Only respond if used in a channel called 'committee-general'
     if context.channel.name != 'committee-general':
         return
@@ -245,7 +263,6 @@ async def setup(context, post, ron=True):
         standing[post] = [(0, "I am not satisfied with any of the candidates", None)]
     await context.send(post + " post created")
 
-votes = {}
 lookup = {
     '1️⃣': 0,
     '2️⃣': 1,
@@ -258,34 +275,49 @@ lookup = {
     '9️⃣': 8,
 }
 
-# Why the hell am I doing this on event? Why don't I just itterate through the messages at the end and work it all out? Much less likely to go wrong! These events can still have checks for no multiple emoji or reacting with :three: before :two:, etc
 @bot.event
 async def on_reaction_add(reaction, user):
     if current_live_post:
-        print(voting_messages[reaction.message.id])
+        # Check if react is not valid, and if so, tell them they fucked up
+        if reaction.emoji not in lookup:
+            await user.send("You can't react with that emoji, you must remove it else your ballot will not be counted")
+            return
+
+        # Check if ranking is higher than the total number of positions
+        if lookup[reaction.emoji] + 1 > len(standing[current_live_post]):
+            await user.send("You can't react with a higher ranking than the number of candidates up for election,"
+                            "you must fix this else your ballot will not be counted")
+            return
+        # Check if there is more than one react, and if so, tell them they fucked up
         if len(reaction.message.reactions) > 1:
-            await user.send("You can't react to each candidate with more than one value, you must fix this else your vote will not be counted")
-        # When we implemente the :two:, etc, how do we make sure they haven't put more than one emoji on each message?
-        # Maybe check if there are any others, and if so, tell them they fucked up?
-        # Also do the same if they try to do :three: before :two:, etc # WE CAN ONLY DO THIS IF WE MAKE THE USER THE KEY IN voting_messages INSTEAD OF HTE MESSAGE ID
-        # Also do the same if they put the same ranking to more than one candidate # WE CAN ONLY DO THIS IF WE MAKE THE USER THE KEY IN voting_messages INSTEAD OF HTE MESSAGE ID
+            await user.send("You can't react to each candidate with more than one value, you must fix this else your ballot will not be counted")
 
-#@bot.event
-#async def on_reaction_remove(reaction, user):
-#    if current_live_post:
-        # Append the correct value (based on the type of emoji used) to a list of the emoji along with who made the vote
-        # Summarise the votes this person has made and DM it to them
-        # print(reaction, user)
-        # print(voting_messages[reaction.message.id])
-#        votes[voting_messages[reaction.message.id][0]][lookup[reaction[1:-1]]] -= 1
-        # Unreact with the same emoji as confirmation
+        all_reactions = []
+        for _, message_id in voting_messages[user.id]:
+            message = await bot.get_user(user.id).fetch_message(message_id)
+            all_reactions.extend([react.emoji for react in message.reactions])
+            
+        # Check if they put the same ranking to more than one candidate, and if so, tell them they fucked up
+        if all_reactions.count(reaction) > 1:
+            await user.send("You can't react to more than one candidate with the same value, you must fix this else your ballot will not be counted")
+            
+        # Check if they try to do :three: before :two:, etc, and if so, tell them they fucked up
+        for i in range(lookup[reaction.emoji]):
+            react_to_check = list(lookup.keys())[i]
+            if react_to_check not in all_reactions:
+                await user.send("Looks like you've skipped ranking " + react_to_check + ", you must fix this else your ballot will not be counted")
 
 
-# Format -> {<Message ID>: <Candidate Student ID>}
+# Format -> {<User ID>: [(<Candidate Student ID>, <Message ID>), ...]}
 voting_messages = {}
 
-rules_string = "Do not vote for one candidate multiple times\nDo not give the same ranking to multiple candidates\nYou must not skip rankings (e.g. give a candidate a '3️⃣' without giving any candidate a '2️⃣')\nIf you do not follow these three rules, your vote will not be counted"
-
+rules_string = ("Do not react with any reactions other than the number reacts 1️⃣  - 9️⃣\n"
+               "Do not react with the ranking higher than the number of candidates (e.g. if there are three candidates, don't react 4️⃣ to any candidates)\n"
+               "Do not vote for one candidate multiple times\n"
+               "Do not give the same ranking to multiple candidates\n"
+               "Do not skip rankings (e.g. give a candidate a '3️⃣' without giving any candidate a '2️⃣')\n"
+               "If you do not follow these rules, your vote will not be counted\n"
+)
 @bot.command(name='begin', help='Begins the election for the specified post')
 async def begin(context, post):
     global current_live_post
@@ -302,8 +334,6 @@ async def begin(context, post):
     members = get_members()
     # Prints the candidates for each post in a seperate message
     await candidates(context, post)
-    for candidate in standing[post]:
-        votes[candidate[0]] = [0] * len(standing[post])
 
     current_live_post = post
     print("Voting has now begun for post:", post)
@@ -311,12 +341,19 @@ async def begin(context, post):
         user = bot.get_user(voter)
         await user.send("Voting has now begun for post: " + post)
         await user.send(rules_string)
+        await user.send("Ballot Paper for " + post + " (Please react to the messages below):")
+        await user.send("\*\*\*\*\*\*\*\*\*\*")
         random.shuffle(standing[post])
         # Message the member with the shuffled candidate list, each candidate in a seperate message, record the ID of the message
+        if user.id not in voting_messages:
+            voting_messages[user.id] = []
+
         for candidate in standing[post]:
-            message = await user.send(members[candidate[0]])
-            voting_messages[message.id] = (candidate[0], user)
-            #need to store A. the message ID, B. Which candidate is in the message, C. The user it is sent to
+            message = await user.send(" - " + members[candidate[0]])
+            #need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
+            voting_messages[user.id].append((candidate[0], message.id))
+        await user.send("\*\*\*\*\*\*\*\*\*\*")
+        await user.send("End of Ballot Paper for " + post)
 
     await context.send("All registered voters will have just recieved a message from me. Please vote by reacting to the candidates listed in your DMs where :one: is your top candidate, :two: is your second top candidate, etc")
 
@@ -324,18 +361,27 @@ async def begin(context, post):
        
     # People react with their ranking number for each candidate
 
+@bot.command(name='validate', help='Checks to see if your vote will be accepted')
+async def validate(context):
+    # THIS SHOULD PROBABLY REPLACE ALL THE STUFF THAT HAPPENS ON EACH REACT
+    pass
+
+def calculate_results(candidates, ballots_in):
+    ballots = [Ballot(ranked_candidates=[vote for vote in ballot if str(vote) != '']) for ballot in ballots_in]
+    election_result = pyrankvote.instant_runoff_voting(candidates, ballots)
+    return election_result
 
 @bot.command(name='end', help='Ends the election for the currently live post')
 async def end(context):
     global current_live_post
     global voting_messages
-    global votes # VOTES SHOULD PROBABLY BE A LOCAL VARIABLE
     # Only respond if used in a channel called 'voting'
     if context.channel.name != 'voting':
         return
     # Only available to committee members
     if not any([True for role in context.author.roles if str(role) == "committee"]):
         return
+    
     last_live_post = current_live_post
     current_live_post = None
     print("Voting has now ended for post:", last_live_post)
@@ -344,22 +390,41 @@ async def end(context):
             user = bot.get_user(voter)
             await user.send("Voting has now ended for post: " + last_live_post)
 
+    votes = {}
+    for candidate in standing[last_live_post]:
+        votes[candidate[0]] = [0] * len(standing[last_live_post])
+
     # Count reacts for each candidate and calculate scores
-    for message_id, data in voting_messages.items():
-        message = await data[1].fetch_message(message_id)
-        for reaction in message.reactions:
-            votes[voting_messages[message_id][0]][lookup[reaction.emoji]] += 1
-    print(votes)
+    for user_id, data in voting_messages.items():
+        for candidate, message_id in data:
+            message = await bot.get_user(user_id).fetch_message(message_id)
+            for reaction in message.reactions:
+                votes[candidate][lookup[reaction.emoji]] += 1
+
+    new_votes = []
+    members = get_members()
+    candidates = {candidate[0]: Candidate(members[candidate[0]]) for candidate in standing[last_live_post]}
+    candidates[0] = Candidate('RON (Re-Open-Nominations)')
+
+    for user_id, data in voting_messages.items():
+        new_votes.append([''] * len(standing[last_live_post]))
+        for candidate, message_id in data:
+            message = await bot.get_user(user_id).fetch_message(message_id)
+            if len(message.reactions) > 0:
+                new_votes[-1][lookup[message.reactions[0].emoji]] = candidates[candidate]
+    results = calculate_results(list(candidates.values()), new_votes)
 
     # Announce the scores and the winner (I guess this could be a message to the committee instead, who could then announce it?)
-    members = get_members()
+    winner = results.get_winners()[0]
+
+    print("Result:", results)
+    print("Winner:", winner)
+    
     await context.send("The votes are tallied as follows:")
-    for key, value in votes.items():
-        await context.send(members[key] + " got " + str(value) + " votes")
-    await context.send("The new " + last_live_post + " is: " + members[max(votes.items(), key=lambda x: x[0])[0]])
+    await context.send("```" + str(results) + "```")
+    await context.send("The winning candidate for " + last_live_post + " is: " + str(winner))
 
     voting_messages = {}
-    votes = {}
         
 
 bot.run(TOKEN)
