@@ -34,13 +34,13 @@ URL = os.getenv('GUILD_URL')
 COOKIE = os.getenv('GUILD_COOKIE')
 
 VOTERS_FILE = 'voters.bak'
+STANDING_FILE = 'standing.bak'
 
 # Create the bot and specify to only look for messages starting with '?'
 bot = commands.Bot(command_prefix='?')
 
 # Don't forget to fix RON
 # Format = {<DiscordUsername>: <StudentNumber>}
-registered_members = {"danyc0#7106": 1733780, "RON": 0}
 registered_members = {}
 try:
 	with open(VOTERS_FILE,'rb') as infile:
@@ -49,8 +49,12 @@ except IOError:
     print("No registered_members file:", VOTERS_FILE)
 
 # Format = {<Post>: [(<StudentNumber>, <Bio>, <Image>), ...]}
-standing = {'pgr': [(1733780, "I'm Great", None)]}
 standing = {}
+try:
+	with open(STANDING_FILE,'rb') as infile:
+		standing = pickle.load(infile)
+except IOError:
+    print("No standing file:", STANDING_FILE)
 
 current_live_post = None
 
@@ -83,7 +87,7 @@ async def on_ready():
 # Prototyped
 @bot.command(name='members', help='Prints all CSS members')
 async def members(context):
-    # Only respond if used in a channel called 'voting'
+    # Only respond if used in a channel called 'committee-general'
     if context.channel.name != 'committee-general':
         return
     members = get_members()
@@ -131,46 +135,49 @@ async def register(context, student_number: int):
 
 # Prototyped # make the post .tolower ed
 @bot.command(name='stand', help='Stand for a post')
-async def stand(context, post=None, *bio):
+async def stand(context, *post):
+    post = ' '.join(post)
+    
     # Only respond if used in a DM
     if not isinstance(context.channel, DMChannel):
         await context.send('You need to DM me for this instead')
         return
     elif not post:
-        await context.send('Must supply the post you are running for, usage:\n`?stand <post> <bio>`, you may also attach an optional image of yourself to the message')
+        await context.send('Must supply the post you are running for, usage:\n`?stand <post>`')
         return
     elif post not in standing:
         await context.send('Looks like that post isn\'t available for this election, use ?posts to see the posts up for election')
         return
-    elif not bio:
-        await context.send('Must supply a bio (even a simple one will do), usage:\n`?stand <post> <bio>`')
+    elif post == current_live_post:
+        await context.send('I\'m afraid voting for ' + post + ' has already begun, you cannot stand for this post')
         return
 
-    bio = ' '.join(bio)
-    image = None
-    if context.message.attachments:
-        image = await context.message.attachments[0].to_file()
     author = context.author.id
     members = get_members()
 
     output_str = 'Error'
     if author in registered_members:
-        if [i for i in standing[post] if i[0] == registered_members[author]]:
+        if [i for i in standing[post] if i == registered_members[author]]:
             output_str = 'It looks like you, ' + members[registered_members[author]] + ' are already standing for the position of: ' + post
         else: 
-            standing[post].append((registered_members[author], bio, image))
+            standing[post].append(registered_members[author])
             output_str = 'Congratulations ' + members[registered_members[author]] + ', you are now standing for the position of: ' + post
             print(registered_members[author], "is now standing for", post)
     else:
         output_str = 'Looks like you\'re not registered yet, please register using \"?register <STUDENT NUMBER>\"'
         print(author, "has failed to stand for", post)
         
+    with open(STANDING_FILE,'wb') as outfile:
+        pickle.dump(standing, outfile)
+
     await context.send(output_str)
 
 
 # Prototyped
 @bot.command(name='standdown', help='Stand down from running for a post')
-async def standdown(context, post=None):
+async def standdown(context, *post):
+    post = ' '.join(post)
+
     # Only respond if used in a DM
     if not isinstance(context.channel, DMChannel):
         await context.send('You need to DM me for this instead')
@@ -186,7 +193,7 @@ async def standdown(context, post=None):
 
     output_str = ''
     for i, standing_member in enumerate(standing[post]):
-        if standing_member[0] == registered_members[author]:
+        if standing_member == registered_members[author]:
             standing[post].pop(i)
             output_str = 'You have stood down from running for ' + post
             print(registered_members[author], 'has stood down from standing for', post)
@@ -194,6 +201,9 @@ async def standdown(context, post=None):
 
     if not output_str:        
         output_str = 'Looks like you weren\'t standing for this post'
+
+    with open(STANDING_FILE,'wb') as outfile:
+        pickle.dump(standing, outfile)
         
     await context.send(output_str)
 
@@ -202,7 +212,7 @@ async def standdown(context, post=None):
 @bot.command(name='posts', help='Prints the posts available to stand for in this election')
 async def posts(context):
     # Only respond if used in a channel called 'voting'
-    if isinstance(context.channel, DMChannel) or context.channel.name != 'voting':
+    if not isinstance(context.channel, DMChannel) and context.channel.name != 'voting':
         return
     output_str = '```'
     for post in standing:
@@ -213,7 +223,9 @@ async def posts(context):
 
 # Prototyped
 @bot.command(name='candidates', help='Prints the candidates and their intros')
-async def candidates(context, post=None):
+async def candidates(context, *post):
+    post = ' '.join(post)
+
     # Only respond if used in a channel called 'voting'
     if context.channel.name != 'voting':
         return
@@ -224,10 +236,7 @@ async def candidates(context, post=None):
             random.shuffle(standing[post])
             await context.send("Candidates standing for " + post + ":")
             for candidate in standing[post]:
-                if not candidate[2]:
-                    await context.send(content=" - " + members[candidate[0]] + ": " + candidate[1])
-                else:
-                    await context.send(content=" - " + members[candidate[0]] + ": " + candidate[1], file=candidate[2])
+                await context.send(content=" - " + members[candidate])
             await context.send('--------')
         else:
             await context.send('Looks like that post isn\'t in this election, use ?posts to see the posts up for election`')
@@ -236,10 +245,7 @@ async def candidates(context, post=None):
             random.shuffle(standing[post])
             await context.send("Candidates standing for " + post + ":")
             for candidate in standing[post]:
-                if not candidate[2]:
-                    await context.send(content=" - " + members[candidate[0]] + ":" + candidate[1])
-                else:
-                    await context.send(content=" - " + members[candidate[0]] + ":" + candidate[1], file=candidate[2])
+                await context.send(content=" - " + members[candidate])
             await context.send('--------')
 
 
@@ -260,7 +266,11 @@ async def setup(context, *post):
     if context.channel.name != 'committee-general':
         return
     if ron:
-        standing[post] = [(0, "I am not satisfied with any of the candidates", None)]
+        standing[post] = [0]
+
+    with open(STANDING_FILE,'wb') as outfile:
+        pickle.dump(standing, outfile)
+
     await context.send(post + " post created")
 
 lookup = {
@@ -319,39 +329,46 @@ rules_string = ("Do not react with any reactions other than the number reacts 1ï
                "If you do not follow these rules, your vote will not be counted\n"
 )
 @bot.command(name='begin', help='Begins the election for the specified post')
-async def begin(context, post):
+async def begin(context, *post):
     global current_live_post
+
+    post = ' '.join(post)
+
     # Only respond if used in a channel called 'voting'
     if context.channel.name != 'voting':
         return
     # Only available to committee members
-    if not any([True for role in context.author.roles if str(role) == "committee"]):
+    elif not any([True for role in context.author.roles if str(role) == "committee"]):
         return
-    if current_live_post:
+    elif not post:
+        await context.send('Must supply the post you are running for, usage:\n`?begin <post>`')
+        return
+    elif current_live_post:
         await context.send('You can\'t start a new vote until the last one has finished')
         return
 
     members = get_members()
     # Prints the candidates for each post in a seperate message
     await candidates(context, post)
+    await context.send("Voting has now begun for " + post)
 
     current_live_post = post
     print("Voting has now begun for post:", post)
     for voter in registered_members:
+        print(voter)
         user = bot.get_user(voter)
-        await user.send("Voting has now begun for post: " + post)
+        print(user)
         await user.send(rules_string)
-        await user.send("Ballot Paper for " + post + " (Please react to the messages below):")
-        await user.send("\*\*\*\*\*\*\*\*\*\*")
+        await user.send("Ballot Paper for " + post + " (Please react to the messages below):\n\*\*\*\*\*\*\*\*\*\*")
         random.shuffle(standing[post])
         # Message the member with the shuffled candidate list, each candidate in a seperate message, record the ID of the message
         if user.id not in voting_messages:
             voting_messages[user.id] = []
 
         for candidate in standing[post]:
-            message = await user.send(" - " + members[candidate[0]])
+            message = await user.send(" - " + members[candidate])
             #need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
-            voting_messages[user.id].append((candidate[0], message.id))
+            voting_messages[user.id].append((candidate, message.id))
         await user.send("\*\*\*\*\*\*\*\*\*\*")
         await user.send("End of Ballot Paper for " + post)
 
@@ -392,7 +409,7 @@ async def end(context):
 
     votes = {}
     for candidate in standing[last_live_post]:
-        votes[candidate[0]] = [0] * len(standing[last_live_post])
+        votes[candidate] = [0] * len(standing[last_live_post])
 
     # Count reacts for each candidate and calculate scores
     for user_id, data in voting_messages.items():
@@ -403,7 +420,7 @@ async def end(context):
 
     new_votes = []
     members = get_members()
-    candidates = {candidate[0]: Candidate(members[candidate[0]]) for candidate in standing[last_live_post]}
+    candidates = {candidate: Candidate(members[candidate]) for candidate in standing[last_live_post]}
     candidates[0] = Candidate('RON (Re-Open-Nominations)')
 
     for user_id, data in voting_messages.items():
