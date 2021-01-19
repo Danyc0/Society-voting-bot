@@ -22,9 +22,10 @@ from discord.channel import DMChannel
 # List candidates:       ?candidates PGR
 # Voting begins:         ?begin PGR
 # Voters vote:           Reacts
+# Voters submit:         ?submit
 # Voting ends + results: ?end
 
-
+#TODO: Allow resubmitting a ballot, by storing an anonymised token alongside the vote, which is the hash of their userID+a password, the password can either be made by them or by the system, but then when they resubmit, they must provide the password. Alongside this there must be a list of users that have voted. If they've voted and the hash doesn't exist, incorrect password, if they've voted and the hash already exist, then update the vote, if they haven't voted and the hash doesn't exist, add the hash, if they haven't voted and the hash exists, error.
 
 
 load_dotenv()
@@ -32,6 +33,7 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 URL = os.getenv('GUILD_URL')
 # This should be extracted from your .ASPXAUTH cookie
 COOKIE = os.getenv('GUILD_COOKIE')
+COMMITTEE_CHANNEL = int(os.getenv('COMMITTEE_CHANNEL'))
 
 VOTERS_FILE = 'voters.bak'
 STANDING_FILE = 'standing.bak'
@@ -48,7 +50,7 @@ try:
 except IOError:
     print("No registered_members file:", VOTERS_FILE)
 
-# Format = {<Post>: [(<StudentNumber>, <Bio>, <Image>), ...]}
+# Format = {<Post>: [<StudentNumber>, ...]}
 standing = {}
 try:
 	with open(STANDING_FILE,'rb') as infile:
@@ -57,7 +59,11 @@ except IOError:
     print("No standing file:", STANDING_FILE)
 
 current_live_post = None
+votes = []
+voted = []
+candidate_objects = {}
 
+committee_channel = ''
 random.seed(time.time())
 
 
@@ -79,13 +85,15 @@ def get_members():
 
 @bot.event
 async def on_ready():
+    global committee_channel
+    committee_channel = bot.get_channel(COMMITTEE_CHANNEL)
     print(f'{bot.user.name} has connected to Discord and is in the following channels:')
     for guild in bot.guilds:
         print('  ', guild.name)
 
 
 # Prototyped
-@bot.command(name='members', help='Prints all CSS members')
+@bot.command(name='members')
 async def members(context):
     # Only respond if used in a channel called 'committee-general'
     if context.channel.name != 'committee-general':
@@ -118,7 +126,9 @@ async def register(context, student_number: int):
         if author in registered_members:
             output_str = 'Looks like your Discord username is already registered to ' + str(registered_members[author])
         elif student_number in registered_members.values():
-            output_str = 'Looks like your student ID is already registered to ' + bot.get_user([key for key, value in registered_members.items() if value == student_number][0]).name
+            output_str = 'Looks like your student ID is already registered to someone else, please contact a committee member'
+            other_user = await bot.fetch_user([key for key, value in registered_members.items() if value == student_number][0]).name
+            print(context.author, "tried to register student ID", student_number, "but it is already registered to", other_user)
         else:
             registered_members[author] = student_number
             output_str = 'Thank you ' + members[registered_members[author]] + ', you are now registered'
@@ -137,7 +147,8 @@ async def register(context, student_number: int):
 @bot.command(name='stand', help='Stand for a post')
 async def stand(context, *post):
     post = ' '.join(post)
-    
+    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
+
     # Only respond if used in a DM
     if not isinstance(context.channel, DMChannel):
         await context.send('You need to DM me for this instead')
@@ -145,10 +156,11 @@ async def stand(context, *post):
     elif not post:
         await context.send('Must supply the post you are running for, usage:\n`?stand <post>`')
         return
-    elif post not in standing:
+    elif not matching_posts:
         await context.send('Looks like that post isn\'t available for this election, use ?posts to see the posts up for election')
         return
-    elif post == current_live_post:
+    post = matching_posts[0]
+    if post == current_live_post:
         await context.send('I\'m afraid voting for ' + post + ' has already begun, you cannot stand for this post')
         return
 
@@ -177,6 +189,7 @@ async def stand(context, *post):
 @bot.command(name='standdown', help='Stand down from running for a post')
 async def standdown(context, *post):
     post = ' '.join(post)
+    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
 
     # Only respond if used in a DM
     if not isinstance(context.channel, DMChannel):
@@ -185,9 +198,10 @@ async def standdown(context, *post):
     elif not post:
         await context.send('Must supply the post you are standing down from, usage:\n`?standdown <post>`')
         return
-    elif post not in standing:
+    elif not matching_posts:
         await context.send('Looks like that post isn\'t available for this election, use ?posts to see the posts up for election`')
         return
+    post = matching_posts[0]
 
     author = context.author.id
 
@@ -211,7 +225,7 @@ async def standdown(context, *post):
 # Prototyped
 @bot.command(name='posts', help='Prints the posts available to stand for in this election')
 async def posts(context):
-    # Only respond if used in a channel called 'voting'
+    # Only respond if used in a channel called 'voting' or in a DM
     if not isinstance(context.channel, DMChannel) and context.channel.name != 'voting':
         return
     output_str = '```'
@@ -222,9 +236,10 @@ async def posts(context):
 
 
 # Prototyped
-@bot.command(name='candidates', help='Prints the candidates and their intros')
+@bot.command(name='candidates', help='Prints the candidates for the specified post (or all posts if no post is given)')
 async def candidates(context, *post):
     post = ' '.join(post)
+    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
 
     # Only respond if used in a channel called 'voting'
     if context.channel.name != 'voting':
@@ -232,7 +247,9 @@ async def candidates(context, *post):
 
     members = get_members()
     if post:
-        if post in standing:
+        if matching_posts:
+            post = matching_posts[0]
+            
             random.shuffle(standing[post])
             await context.send("Candidates standing for " + post + ":")
             for candidate in standing[post]:
@@ -254,6 +271,20 @@ async def rules(context):
     # Only respond if used in a channel called 'voting'
     if context.channel.name != 'voting':
         return
+    rules_string = (
+                "To register to vote, DM me with `?register <YOUR STUDENT ID NUMBER>` (without the '<>')\n"
+                "To stand for a position, DM me with `?stand <POST>`, where <POST> is the post you wish to stand for (without the '<>'), you can see all posts available by sending `?posts`\n"
+                "When voting begins, I will DM you a ballot paper. To vote, you'll need to react to the candidates in that ballot paper, where :one: is your top candidate, :two: is your second top candidate, etc\n"
+                "The rules for filling in the ballot are as follows:\n"
+                "- You don't have to use all your rankings, but don't leave any gaps (e.g. you can't give a candidate 3️⃣ without giving some candidate 2️⃣)\n"
+                "- Don't react with any reactions other than the number reacts 1️⃣  - 9️⃣\n"
+                "- Don't react with a ranking higher than the number of candidates (e.g. if there are three candidates, don't react 4️⃣ to any candidates)\n"
+                "- Don't vote for one candidate multiple times\n"
+                "- Don't give the same ranking to multiple candidates\n\n"
+                "**Once you are happy with your ballot, please submit your vote by sending** `?submit`\n"
+                "When you submit your ballot, it will be checked against the rules and if something's not right, you'll be asked to fix it and will need to submit again"
+    )
+    await context.send(rules_string)
 
 
 # Prototyped # make the post .tolower ed
@@ -262,9 +293,15 @@ async def setup(context, *post):
     # FIX THIS
     ron = True
     post = ' '.join(post)
+    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
+
     # Only respond if used in a channel called 'committee-general'
     if context.channel.name != 'committee-general':
         return
+    elif matching_posts:
+        await context.send(post + " already exists")
+        return
+
     if ron:
         standing[post] = [0]
 
@@ -272,6 +309,21 @@ async def setup(context, *post):
         pickle.dump(standing, outfile)
 
     await context.send(post + " post created")
+
+# Format -> {<User ID>: [(<Candidate Student ID>, <Message ID>), ...]}
+voting_messages = {}
+
+voter_rules_string = (
+                "Please vote by reacting to the candidates listed below where :one: is your top candidate, :two: is your second top candidate, etc\n"
+                "**Once you are happy with your ballot, please submit your vote by sending** `?submit`\n\n"
+                "You must abide by the following rules:\n"
+                "- Do not react with any reactions other than the number reacts 1️⃣  - 9️⃣\n"
+                "- Do not react with a ranking higher than the number of candidates (e.g. if there are three candidates, don't react 4️⃣ to any candidates)\n"
+                "- Do not vote for one candidate multiple times\n"
+                "- Do not give the same ranking to multiple candidates\n"
+                "- Do not skip rankings (e.g. give a candidate 3️⃣ without giving any candidate 2️⃣)\n"
+                "If you do not follow these rules, your vote will not be counted (they will be validated when you submit, and you will be asked to fix any issues and you'll then need to resubmit)\n"
+)
 
 lookup = {
     '1️⃣': 0,
@@ -285,81 +337,49 @@ lookup = {
     '9️⃣': 8,
 }
 
-@bot.event
-async def on_reaction_add(reaction, user):
-    if current_live_post:
-        # Check if react is not valid, and if so, tell them they fucked up
-        if reaction.emoji not in lookup:
-            await user.send("You can't react with that emoji, you must remove it else your ballot will not be counted")
-            return
-
-        # Check if ranking is higher than the total number of positions
-        if lookup[reaction.emoji] + 1 > len(standing[current_live_post]):
-            await user.send("You can't react with a higher ranking than the number of candidates up for election,"
-                            "you must fix this else your ballot will not be counted")
-            return
-        # Check if there is more than one react, and if so, tell them they fucked up
-        if len(reaction.message.reactions) > 1:
-            await user.send("You can't react to each candidate with more than one value, you must fix this else your ballot will not be counted")
-
-        all_reactions = []
-        for _, message_id in voting_messages[user.id]:
-            message = await bot.get_user(user.id).fetch_message(message_id)
-            all_reactions.extend([react.emoji for react in message.reactions])
-            
-        # Check if they put the same ranking to more than one candidate, and if so, tell them they fucked up
-        if all_reactions.count(reaction) > 1:
-            await user.send("You can't react to more than one candidate with the same value, you must fix this else your ballot will not be counted")
-            
-        # Check if they try to do :three: before :two:, etc, and if so, tell them they fucked up
-        for i in range(lookup[reaction.emoji]):
-            react_to_check = list(lookup.keys())[i]
-            if react_to_check not in all_reactions:
-                await user.send("Looks like you've skipped ranking " + react_to_check + ", you must fix this else your ballot will not be counted")
-
-
-# Format -> {<User ID>: [(<Candidate Student ID>, <Message ID>), ...]}
-voting_messages = {}
-
-rules_string = ("Do not react with any reactions other than the number reacts 1️⃣  - 9️⃣\n"
-               "Do not react with the ranking higher than the number of candidates (e.g. if there are three candidates, don't react 4️⃣ to any candidates)\n"
-               "Do not vote for one candidate multiple times\n"
-               "Do not give the same ranking to multiple candidates\n"
-               "Do not skip rankings (e.g. give a candidate a '3️⃣' without giving any candidate a '2️⃣')\n"
-               "If you do not follow these rules, your vote will not be counted\n"
-)
 @bot.command(name='begin', help='Begins the election for the specified post')
 async def begin(context, *post):
     global current_live_post
+    global votes
+    global candidate_objects
 
     post = ' '.join(post)
+    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
 
     # Only respond if used in a channel called 'voting'
-    if context.channel.name != 'voting':
+    if isinstance(context.channel, DMChannel) or context.channel.name != 'voting':
         return
     # Only available to committee members
     elif not any([True for role in context.author.roles if str(role) == "committee"]):
         return
     elif not post:
-        await context.send('Must supply the post you are running for, usage:\n`?begin <post>`')
+        await context.send('Must supply the post you are starting the vote for, usage:\n`?begin <post>`')
         return
     elif current_live_post:
         await context.send('You can\'t start a new vote until the last one has finished')
         return
 
+    post = matching_posts[0]
+
     members = get_members()
+    candidate_objects = {candidate: Candidate(members[candidate]) for candidate in standing[post]}
+    candidate_objects[0] = Candidate('RON (Re-Open-Nominations)')
+
+    users = []
+    for voter in registered_members:
+        user = await bot.fetch_user(voter)
+        users.append(user)
+
     # Prints the candidates for each post in a seperate message
-    await candidates(context, post)
-    await context.send("Voting has now begun for " + post)
+    #await candidates(context, post)
 
     current_live_post = post
     print("Voting has now begun for post:", post)
-    for voter in registered_members:
-        print(voter)
-        user = bot.get_user(voter)
-        print(user)
-        await user.send(rules_string)
-        await user.send("Ballot Paper for " + post + " (Please react to the messages below):\n\*\*\*\*\*\*\*\*\*\*")
+
+    num_candidates = len(standing[post])
+    max_react = list(lookup.keys())[num_candidates-1]
+    for user in users:
+        await user.send(voter_rules_string + "\nBallot Paper for " + post + ", there are " + str(num_candidates) + " candidates. (Please react to the messages below with 1️⃣ -" + max_react + ". You do not need to put a ranking in for every candidate) **Don't forget to **`?submit`** when you're done**:\n\*\*\*\*\*\*\*\*\*\*")
         random.shuffle(standing[post])
         # Message the member with the shuffled candidate list, each candidate in a seperate message, record the ID of the message
         if user.id not in voting_messages:
@@ -369,29 +389,101 @@ async def begin(context, *post):
             message = await user.send(" - " + members[candidate])
             #need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
             voting_messages[user.id].append((candidate, message.id))
-        await user.send("\*\*\*\*\*\*\*\*\*\*")
-        await user.send("End of Ballot Paper for " + post)
+        #await user.send("\*\*\*\*\*\*\*\*\*\*\nEnd of Ballot Paper for " + post)
 
-    await context.send("All registered voters will have just recieved a message from me. Please vote by reacting to the candidates listed in your DMs where :one: is your top candidate, :two: is your second top candidate, etc")
+    await context.send("Voting has now begun for " + post)
+    await context.send("All registered voters will have just recieved a message from me. Please vote by reacting to the candidates listed in your DMs where :one: is your top candidate, :two: is your second top candidate, etc. You do not need to put a ranking in for every candidate")
 
-    print(voting_messages)
-       
-    # People react with their ranking number for each candidate
 
 @bot.command(name='validate', help='Checks to see if your vote will be accepted')
 async def validate(context):
-    # THIS SHOULD PROBABLY REPLACE ALL THE STUFF THAT HAPPENS ON EACH REACT
-    pass
+    author = context.author.id
+    # Only work in DM and only for registered users
+    if not isinstance(context.channel, DMChannel) or author not in voting_messages:
+        return False
+    
+    await context.send("Checking vote validity ...")
+    valid = True
+    all_reactions = []
+    for candidate, message_id in voting_messages[author]:
+        message = await context.author.fetch_message(message_id)
 
-def calculate_results(candidates, ballots_in):
-    ballots = [Ballot(ranked_candidates=[vote for vote in ballot if str(vote) != '']) for ballot in ballots_in]
-    election_result = pyrankvote.instant_runoff_voting(candidates, ballots)
-    return election_result
+        # Check if there is more than one react, and if so, tell them they fucked up
+        if len(message.reactions) > 1:
+            await context.send("You can't react to each candidate with more than one emoji")
+            valid = False
+
+        for reaction in message.reactions:
+            # Check if react is not valid, and if so, tell them they fucked up
+            if reaction.emoji not in lookup:
+                await context.send("You have reacted with an invalid emoji")
+                valid = False
+            else:
+                all_reactions.append(reaction.emoji)
+
+
+    for reaction in lookup.keys():
+        # Check if they put the same ranking to more than one candidate, and if so, tell them they fucked up
+        if all_reactions.count(reaction) > 1:
+            await context.send("You can't react to more than one candidate with the same value")
+            valid = False
+
+    # Check if they try to do :three: before :two:, etc, and if so, tell them they fucked up
+    if len(all_reactions) != 0:
+        max_value = lookup[max(all_reactions, key=lambda x: lookup[x])]
+        if max_value > len(standing[current_live_post]):
+            await context.send("You've given a ranking that is higher than the number of candidates")
+            valid = False
+        else:
+            for i in range(max_value):
+                react_to_check = list(lookup.keys())[i]
+                if react_to_check not in all_reactions:
+                    await context.send("Looks like you've skipped ranking " + react_to_check)
+                    valid = False
+
+    return valid
+
+@bot.command(name='submit', help='Submits your vote')
+async def submit(context):
+    author = context.author.id
+    # Only work in DM and only for registered users
+    if not isinstance(context.channel, DMChannel):
+        await context.send("You need to DM this to me instead")
+        return
+    elif author not in voting_messages:
+        return
+    elif author in voted:
+        await context.send("You have already cast your vote and it cannot be changed")
+        return
+
+    
+    valid = await validate(context)
+    if not valid:
+        await context.send("Your vote was not valid, so was not cast, please correct your ballot and resubmit")
+        return
+
+    voted.append(author)
+    ballot_list = [''] * len(standing[current_live_post])
+
+    # Create ballot
+    for candidate, message_id in voting_messages[author]:
+        message = await context.author.fetch_message(message_id)
+        if message.reactions:
+            reaction = message.reactions[0].emoji
+            ballot_list[lookup[reaction]] = candidate_objects[candidate]
+
+    votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
+    await context.send("Your vote was valid and was successfully cast")
+    print("Votes cast:", len(votes), "- Votes not yet cast:", len(registered_members)-len(votes))
 
 @bot.command(name='end', help='Ends the election for the currently live post')
 async def end(context):
     global current_live_post
     global voting_messages
+    global votes
+    global candidate_objects
+    global voted
+
     # Only respond if used in a channel called 'voting'
     if context.channel.name != 'voting':
         return
@@ -403,33 +495,10 @@ async def end(context):
     current_live_post = None
     print("Voting has now ended for post:", last_live_post)
     for voter in registered_members:
-        if voter != "RON":
-            user = bot.get_user(voter)
-            await user.send("Voting has now ended for post: " + last_live_post)
+        user = await bot.fetch_user(voter)
+        await user.send("Voting has now ended for post: " + last_live_post)
 
-    votes = {}
-    for candidate in standing[last_live_post]:
-        votes[candidate] = [0] * len(standing[last_live_post])
-
-    # Count reacts for each candidate and calculate scores
-    for user_id, data in voting_messages.items():
-        for candidate, message_id in data:
-            message = await bot.get_user(user_id).fetch_message(message_id)
-            for reaction in message.reactions:
-                votes[candidate][lookup[reaction.emoji]] += 1
-
-    new_votes = []
-    members = get_members()
-    candidates = {candidate: Candidate(members[candidate]) for candidate in standing[last_live_post]}
-    candidates[0] = Candidate('RON (Re-Open-Nominations)')
-
-    for user_id, data in voting_messages.items():
-        new_votes.append([''] * len(standing[last_live_post]))
-        for candidate, message_id in data:
-            message = await bot.get_user(user_id).fetch_message(message_id)
-            if len(message.reactions) > 0:
-                new_votes[-1][lookup[message.reactions[0].emoji]] = candidates[candidate]
-    results = calculate_results(list(candidates.values()), new_votes)
+    results = pyrankvote.instant_runoff_voting(list(candidate_objects.values()), votes)
 
     # Announce the scores and the winner (I guess this could be a message to the committee instead, who could then announce it?)
     winner = results.get_winners()[0]
@@ -437,11 +506,15 @@ async def end(context):
     print("Result:", results)
     print("Winner:", winner)
     
-    await context.send("The votes are tallied as follows:")
-    await context.send("```" + str(results) + "```")
-    await context.send("The winning candidate for " + last_live_post + " is: " + str(winner))
+    
+    await committee_channel.send("The votes were tallied as follows:")
+    await committee_channel.send("```" + str(results) + "```")
+    await committee_channel.send("The winning candidate for " + last_live_post + " is: " + str(winner))
 
     voting_messages = {}
+    votes = []
+    candidate_objects = {}
+    voted = []
         
 
 bot.run(TOKEN)
