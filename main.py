@@ -42,7 +42,7 @@ STANDING_FILE = 'standing.bak'
 bot = commands.Bot(command_prefix='\\')
 
 # Don't forget to fix RON
-# Format = {<DiscordUsername>: <StudentNumber>}
+# Format = {<Discord Username>: <Student Number>}
 registered_members = {}
 try:
 	with open(VOTERS_FILE,'rb') as infile:
@@ -50,7 +50,7 @@ try:
 except IOError:
     print("No registered_members file:", VOTERS_FILE)
 
-# Format = {<Post>: [<StudentNumber>, ...]}
+# Format = {<Post>: {<Student Number>: <Candidate Object>, ...}, ...}
 standing = {}
 try:
 	with open(STANDING_FILE,'rb') as infile:
@@ -61,7 +61,6 @@ except IOError:
 current_live_post = None
 votes = []
 voted = []
-candidate_objects = {}
 
 committee_channel = ''
 random.seed(time.time())
@@ -82,7 +81,7 @@ def get_members():
     members_parse = re.findall("/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)", table)
     standard_membership = {int(member[2]): (member[1] + " " + member[0]) for member in members_parse}
 
-    # Format = {<StudentNumber>: <Name>}
+    # Format = {<Student Number>: <Name>}
     members = {**all_members, **standard_membership}
     members[0] = "RON (Re-Open-Nominations)"
     return members
@@ -174,10 +173,10 @@ async def stand(context, *post):
 
     output_str = 'Error'
     if author in registered_members:
-        if [i for i in standing[post] if i == registered_members[author]]:
+        if [i for i in standing[post].keys() if i == registered_members[author]]:
             output_str = 'It looks like you, ' + members[registered_members[author]] + ' are already standing for the position of: ' + post
         else: 
-            standing[post].append(registered_members[author])
+            standing[post][registered_members[author]] = Candidate(members[registered_members[author]])
             output_str = 'Congratulations ' + members[registered_members[author]] + ', you are now standing for the position of: ' + post
             print(registered_members[author], "is now standing for", post)
     else:
@@ -210,21 +209,17 @@ async def standdown(context, *post):
 
     author = context.author.id
 
-    output_str = ''
-    for i, standing_member in enumerate(standing[post]):
-        if standing_member == registered_members[author]:
-            standing[post].pop(i)
-            output_str = 'You have stood down from running for ' + post
-            print(registered_members[author], 'has stood down from standing for', post)
-            break
+    if registered_members[author] not in standing[post]:
+        await context.send('Looks like you weren\'t standing for this post')
+        return
 
-    if not output_str:        
-        output_str = 'Looks like you weren\'t standing for this post'
+    del standing[post][registered_members[author]]
 
     with open(STANDING_FILE,'wb') as outfile:
         pickle.dump(standing, outfile)
         
-    await context.send(output_str)
+    print(registered_members[author], 'has stood down from standing for', post)
+    await context.send('You have stood down from running for ' + post)
 
 
 # Prototyped
@@ -241,8 +236,8 @@ async def posts(context):
 
 
 # Prototyped
-@bot.command(name='candidates', help='Prints the candidates for the specified post (or all posts if no post is given)')
-async def candidates(context, *post):
+@bot.command(name='list_candidates', help='Prints the candidates for the specified post (or all posts if no post is given)')
+async def list_candidates(context, *post):
     post = ' '.join(post)
     matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
 
@@ -254,19 +249,20 @@ async def candidates(context, *post):
     if post:
         if matching_posts:
             post = matching_posts[0]
-            
-            random.shuffle(standing[post])
+            candidates = list(standing[post].keys())
+            random.shuffle(candidates)
             await context.send("Candidates standing for " + post + ":")
-            for candidate in standing[post]:
+            for candidate in candidates:
                 await context.send(content=" - " + members[candidate])
             await context.send('--------')
         else:
             await context.send('Looks like that post isn\'t in this election, use `\\posts` to see the posts up for election`')
     else:
         for post in standing:
-            random.shuffle(standing[post])
+            candidates = list(standing[post].keys())
+            random.shuffle(candidates)
             await context.send("Candidates standing for " + post + ":")
-            for candidate in standing[post]:
+            for candidate in candidates:
                 await context.send(content=" - " + members[candidate])
             await context.send('--------')
 
@@ -308,7 +304,7 @@ async def setup(context, *post):
         return
 
     if ron:
-        standing[post] = [0]
+        standing[post] = {0: Candidate("RON (Re-Open Nominations)")}
 
     with open(STANDING_FILE,'wb') as outfile:
         pickle.dump(standing, outfile)
@@ -346,7 +342,6 @@ lookup = {
 async def begin(context, *post):
     global current_live_post
     global votes
-    global candidate_objects
 
     post = ' '.join(post)
     matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
@@ -367,8 +362,6 @@ async def begin(context, *post):
     post = matching_posts[0]
 
     members = get_members()
-    candidate_objects = {candidate: Candidate(members[candidate]) for candidate in standing[post]}
-    candidate_objects[0] = Candidate('RON (Re-Open-Nominations)')
 
     users = []
     for voter in registered_members:
@@ -385,12 +378,13 @@ async def begin(context, *post):
     max_react = list(lookup.keys())[num_candidates-1]
     for user in users:
         await user.send(voter_rules_string + "\nBallot Paper for " + post + ", there are " + str(num_candidates) + " candidates. (Please react to the messages below with 1️⃣ -" + max_react + ". You do not need to put a ranking in for every candidate) **Don't forget to **`\\submit`** when you're done**:\n\*\*\*\*\*\*\*\*\*\*")
-        random.shuffle(standing[post])
+        candidates = list(standing[post].keys())
+        random.shuffle(candidates)
         # Message the member with the shuffled candidate list, each candidate in a seperate message, record the ID of the message
         if user.id not in voting_messages:
             voting_messages[user.id] = []
 
-        for candidate in standing[post]:
+        for candidate in candidates:
             message = await user.send(" - " + members[candidate])
             #need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
             voting_messages[user.id].append((candidate, message.id))
@@ -475,7 +469,7 @@ async def submit(context):
         message = await context.author.fetch_message(message_id)
         if message.reactions:
             reaction = message.reactions[0].emoji
-            ballot_list[lookup[reaction]] = candidate_objects[candidate]
+            ballot_list[lookup[reaction]] = standing[current_live_post][candidate]
 
     votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
     await context.send("Your vote was valid and was successfully cast")
@@ -486,7 +480,6 @@ async def end(context):
     global current_live_post
     global voting_messages
     global votes
-    global candidate_objects
     global voted
 
     # Only respond if used in a channel called 'voting'
@@ -503,7 +496,7 @@ async def end(context):
         user = await bot.fetch_user(voter)
         await user.send("Voting has now ended for post: " + last_live_post)
 
-    results = pyrankvote.instant_runoff_voting(list(candidate_objects.values()), votes)
+    results = pyrankvote.instant_runoff_voting(list(standing[last_live_post].values()), votes)
 
     # Announce the scores and the winner to the committee
     winner = results.get_winners()[0]
@@ -518,7 +511,6 @@ async def end(context):
 
     voting_messages = {}
     votes = []
-    candidate_objects = {}
     voted = []
         
 
