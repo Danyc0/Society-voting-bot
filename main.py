@@ -3,7 +3,7 @@ import time
 import datetime
 import json
 import random
-import urllib.request
+import requests
 from dotenv import load_dotenv
 import re
 import pickle
@@ -68,17 +68,22 @@ random.seed(time.time())
 
 
 def get_members():
-    req = urllib.request.Request(URL)
-    req.add_header('Cookie', '.ASPXAUTH=' + COOKIE)
-    page = str(urllib.request.urlopen(req).read())
+    page = requests.get(URL, cookies={'.ASPXAUTH': COOKIE}).content.decode("utf-8")
+
     first_parse = re.search("All Members[\s\S]*?(\d+) member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>", page)
     num_members = first_parse.group(1)
     table = first_parse.group(2)
-
     members_parse = re.findall("/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)", table)
+    all_members = {int(member[2]): (member[1] + " " + member[0]) for member in members_parse}
+
+    first_parse = re.search("Standard Membership[\s\S]*?(\d+) member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>", page)
+    num_members = first_parse.group(1)
+    table = first_parse.group(2)
+    members_parse = re.findall("/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)", table)
+    standard_membership = {int(member[2]): (member[1] + " " + member[0]) for member in members_parse}
 
     # Format = {<StudentNumber>: <Name>}
-    members = {int(member[2]): (member[1] + " " + member[0]) for member in members_parse}
+    members = {**all_members, **standard_membership}
     members[0] = "RON (Re-Open-Nominations)"
     return members
 
@@ -135,7 +140,7 @@ async def register(context, student_number: int):
             print(registered_members[author], "is now registered")
     else:
         output_str = 'Looks like you\'re not a member yet, please become a member here: https://cssbham.com/join'
-        print(author, "has failed to register")
+        print(context.author.name, "has failed to register")
 
     with open(VOTERS_FILE,'wb') as outfile:
         pickle.dump(registered_members, outfile)
@@ -177,7 +182,7 @@ async def stand(context, *post):
             print(registered_members[author], "is now standing for", post)
     else:
         output_str = 'Looks like you\'re not registered yet, please register using \"\\register <STUDENT NUMBER>\"'
-        print(author, "has failed to stand for", post)
+        print(context.author.name, "has failed to stand for", post)
         
     with open(STANDING_FILE,'wb') as outfile:
         pickle.dump(standing, outfile)
