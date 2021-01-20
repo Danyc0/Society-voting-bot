@@ -1,7 +1,5 @@
 import os
 import time
-import datetime
-import json
 import random
 import requests
 from dotenv import load_dotenv
