@@ -15,15 +15,15 @@ from discord.ext import commands
 from discord.channel import DMChannel
 
 ## Workflow
-# Setup the post:        ?setup PGR
-# Check the setup:       ?posts
-# Members register:      ?register
-# Members stand:         ?stand PGR 
-# List candidates:       ?candidates PGR
-# Voting begins:         ?begin PGR
+# Setup the post:        \setup PGR
+# Check the setup:       \posts
+# Members register:      \register
+# Members stand:         \stand PGR 
+# List candidates:       \candidates PGR
+# Voting begins:         \begin PGR
 # Voters vote:           Reacts
-# Voters submit:         ?submit
-# Voting ends + results: ?end
+# Voters submit:         \submit
+# Voting ends + results: \end
 
 #TODO: Allow resubmitting a ballot, by storing an anonymised token alongside the vote, which is the hash of their userID+a password, the password can either be made by them or by the system, but then when they resubmit, they must provide the password. Alongside this there must be a list of users that have voted. If they've voted and the hash doesn't exist, incorrect password, if they've voted and the hash already exist, then update the vote, if they haven't voted and the hash doesn't exist, add the hash, if they haven't voted and the hash exists, error.
 
@@ -38,8 +38,8 @@ COMMITTEE_CHANNEL = int(os.getenv('COMMITTEE_CHANNEL'))
 VOTERS_FILE = 'voters.bak'
 STANDING_FILE = 'standing.bak'
 
-# Create the bot and specify to only look for messages starting with '?'
-bot = commands.Bot(command_prefix='?')
+# Create the bot and specify to only look for messages starting with '\'
+bot = commands.Bot(command_prefix='\\')
 
 # Don't forget to fix RON
 # Format = {<DiscordUsername>: <StudentNumber>}
@@ -154,10 +154,10 @@ async def stand(context, *post):
         await context.send('You need to DM me for this instead')
         return
     elif not post:
-        await context.send('Must supply the post you are running for, usage:\n`?stand <post>`')
+        await context.send('Must supply the post you are running for, usage:\n`\\stand <post>`')
         return
     elif not matching_posts:
-        await context.send('Looks like that post isn\'t available for this election, use ?posts to see the posts up for election')
+        await context.send('Looks like that post isn\'t available for this election, use `\\posts` to see the posts up for election')
         return
     post = matching_posts[0]
     if post == current_live_post:
@@ -176,7 +176,7 @@ async def stand(context, *post):
             output_str = 'Congratulations ' + members[registered_members[author]] + ', you are now standing for the position of: ' + post
             print(registered_members[author], "is now standing for", post)
     else:
-        output_str = 'Looks like you\'re not registered yet, please register using \"?register <STUDENT NUMBER>\"'
+        output_str = 'Looks like you\'re not registered yet, please register using \"\\register <STUDENT NUMBER>\"'
         print(author, "has failed to stand for", post)
         
     with open(STANDING_FILE,'wb') as outfile:
@@ -196,10 +196,10 @@ async def standdown(context, *post):
         await context.send('You need to DM me for this instead')
         return
     elif not post:
-        await context.send('Must supply the post you are standing down from, usage:\n`?standdown <post>`')
+        await context.send('Must supply the post you are standing down from, usage:\n`\\standdown <post>`')
         return
     elif not matching_posts:
-        await context.send('Looks like that post isn\'t available for this election, use ?posts to see the posts up for election`')
+        await context.send('Looks like that post isn\'t available for this election, use `\\posts` to see the posts up for election`')
         return
     post = matching_posts[0]
 
@@ -256,7 +256,7 @@ async def candidates(context, *post):
                 await context.send(content=" - " + members[candidate])
             await context.send('--------')
         else:
-            await context.send('Looks like that post isn\'t in this election, use ?posts to see the posts up for election`')
+            await context.send('Looks like that post isn\'t in this election, use `\\posts` to see the posts up for election`')
     else:
         for post in standing:
             random.shuffle(standing[post])
@@ -272,8 +272,8 @@ async def rules(context):
     if context.channel.name != 'voting':
         return
     rules_string = (
-                "To register to vote, DM me with `?register <YOUR STUDENT ID NUMBER>` (without the '<>')\n"
-                "To stand for a position, DM me with `?stand <POST>`, where <POST> is the post you wish to stand for (without the '<>'), you can see all posts available by sending `?posts`\n"
+                "To register to vote, DM me with `\\register <YOUR STUDENT ID NUMBER>` (without the '<>')\n"
+                "To stand for a position, DM me with `\\stand <POST>`, where <POST> is the post you wish to stand for (without the '<>'), you can see all posts available by sending `\\posts`\n"
                 "When voting begins, I will DM you a ballot paper. To vote, you'll need to react to the candidates in that ballot paper, where :one: is your top candidate, :two: is your second top candidate, etc\n"
                 "The rules for filling in the ballot are as follows:\n"
                 "- You don't have to use all your rankings, but don't leave any gaps (e.g. you can't give a candidate 3️⃣ without giving some candidate 2️⃣)\n"
@@ -281,7 +281,7 @@ async def rules(context):
                 "- Don't react with a ranking higher than the number of candidates (e.g. if there are three candidates, don't react 4️⃣ to any candidates)\n"
                 "- Don't vote for one candidate multiple times\n"
                 "- Don't give the same ranking to multiple candidates\n\n"
-                "**Once you are happy with your ballot, please submit your vote by sending** `?submit`\n"
+                "**Once you are happy with your ballot, please submit your vote by sending** `\\submit`\n"
                 "When you submit your ballot, it will be checked against the rules and if something's not right, you'll be asked to fix it and will need to submit again"
     )
     await context.send(rules_string)
@@ -315,7 +315,7 @@ voting_messages = {}
 
 voter_rules_string = (
                 "Please vote by reacting to the candidates listed below where :one: is your top candidate, :two: is your second top candidate, etc\n"
-                "**Once you are happy with your ballot, please submit your vote by sending** `?submit`\n\n"
+                "**Once you are happy with your ballot, please submit your vote by sending** `\\submit`\n\n"
                 "You must abide by the following rules:\n"
                 "- Do not react with any reactions other than the number reacts 1️⃣  - 9️⃣\n"
                 "- Do not react with a ranking higher than the number of candidates (e.g. if there are three candidates, don't react 4️⃣ to any candidates)\n"
@@ -350,10 +350,10 @@ async def begin(context, *post):
     if isinstance(context.channel, DMChannel) or context.channel.name != 'voting':
         return
     # Only available to committee members
-    elif not any([True for role in context.author.roles if str(role) == "committee"]):
+    elif not any([True for role in context.author.roles if str(role) == "Committee"]):
         return
     elif not post:
-        await context.send('Must supply the post you are starting the vote for, usage:\n`?begin <post>`')
+        await context.send('Must supply the post you are starting the vote for, usage:\n`\\begin <post>`')
         return
     elif current_live_post:
         await context.send('You can\'t start a new vote until the last one has finished')
@@ -379,7 +379,7 @@ async def begin(context, *post):
     num_candidates = len(standing[post])
     max_react = list(lookup.keys())[num_candidates-1]
     for user in users:
-        await user.send(voter_rules_string + "\nBallot Paper for " + post + ", there are " + str(num_candidates) + " candidates. (Please react to the messages below with 1️⃣ -" + max_react + ". You do not need to put a ranking in for every candidate) **Don't forget to **`?submit`** when you're done**:\n\*\*\*\*\*\*\*\*\*\*")
+        await user.send(voter_rules_string + "\nBallot Paper for " + post + ", there are " + str(num_candidates) + " candidates. (Please react to the messages below with 1️⃣ -" + max_react + ". You do not need to put a ranking in for every candidate) **Don't forget to **`\\submit`** when you're done**:\n\*\*\*\*\*\*\*\*\*\*")
         random.shuffle(standing[post])
         # Message the member with the shuffled candidate list, each candidate in a seperate message, record the ID of the message
         if user.id not in voting_messages:
@@ -488,7 +488,7 @@ async def end(context):
     if context.channel.name != 'voting':
         return
     # Only available to committee members
-    if not any([True for role in context.author.roles if str(role) == "committee"]):
+    if not any([True for role in context.author.roles if str(role) == "Committee"]):
         return
     
     last_live_post = current_live_post
@@ -500,7 +500,7 @@ async def end(context):
 
     results = pyrankvote.instant_runoff_voting(list(candidate_objects.values()), votes)
 
-    # Announce the scores and the winner (I guess this could be a message to the committee instead, who could then announce it?)
+    # Announce the scores and the winner to the committee
     winner = results.get_winners()[0]
 
     print("Result:", results)
