@@ -149,7 +149,7 @@ async def register(context, student_number: int):
 @bot.command(name='stand', help='Stand for a post')
 async def stand(context, *post):
     post = ' '.join(post)
-    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
+    matching_posts = [a for a in standing if a.lower() == post.lower()]
 
     # Only respond if used in a DM
     if not isinstance(context.channel, DMChannel):
@@ -171,7 +171,7 @@ async def stand(context, *post):
 
     output_str = 'Error'
     if author in registered_members:
-        if [i for i in standing[post].keys() if i == registered_members[author]]:
+        if [i for i in standing[post] if i == registered_members[author]]:
             output_str = 'It looks like you, ' + members[registered_members[author]] + ' are already standing for the position of: ' + post
         else: 
             standing[post][registered_members[author]] = Candidate(members[registered_members[author]])
@@ -191,7 +191,7 @@ async def stand(context, *post):
 @bot.command(name='standdown', help='Stand down from running for a post')
 async def standdown(context, *post):
     post = ' '.join(post)
-    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
+    matching_posts = [a for a in standing if a.lower() == post.lower()]
 
     # Only respond if used in a DM
     if not isinstance(context.channel, DMChannel):
@@ -237,7 +237,7 @@ async def posts(context):
 @bot.command(name='list_candidates', help='Prints the candidates for the specified post (or all posts if no post is given)')
 async def list_candidates(context, *post):
     post = ' '.join(post)
-    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
+    matching_posts = [a for a in standing if a.lower() == post.lower()]
 
     # Only respond if used in a channel called 'voting'
     if context.channel.name != 'voting':
@@ -247,7 +247,7 @@ async def list_candidates(context, *post):
     if post:
         if matching_posts:
             post = matching_posts[0]
-            candidates = list(standing[post].keys())
+            candidates = list(standing[post])
             random.shuffle(candidates)
             await context.send("Candidates standing for " + post + ":")
             for candidate in candidates:
@@ -257,7 +257,7 @@ async def list_candidates(context, *post):
             await context.send('Looks like that post isn\'t in this election, use `\\posts` to see the posts up for election`')
     else:
         for post in standing:
-            candidates = list(standing[post].keys())
+            candidates = list(standing[post])
             random.shuffle(candidates)
             await context.send("Candidates standing for " + post + ":")
             for candidate in candidates:
@@ -292,7 +292,7 @@ async def setup(context, *post):
     # FIX THIS
     ron = True
     post = ' '.join(post)
-    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
+    matching_posts = [a for a in standing if a.lower() == post.lower()]
 
     # Only respond if used in a channel called 'committee-general'
     if context.channel.name != 'committee-general':
@@ -342,7 +342,7 @@ async def begin(context, *post):
     global votes
 
     post = ' '.join(post)
-    matching_posts = [a for a in standing.keys() if a.lower() == post.lower()]
+    matching_posts = [a for a in standing if a.lower() == post.lower()]
 
     # Only respond if used in a channel called 'voting'
     if isinstance(context.channel, DMChannel) or context.channel.name != 'voting':
@@ -373,10 +373,10 @@ async def begin(context, *post):
     print("Voting has now begun for post:", post)
 
     num_candidates = len(standing[post])
-    max_react = list(lookup.keys())[num_candidates-1]
+    max_react = list(lookup)[num_candidates-1]
     for user in users:
         await user.send(voter_rules_string + "\nBallot Paper for " + post + ", there are " + str(num_candidates) + " candidates. (Please react to the messages below with 1️⃣ -" + max_react + ". You do not need to put a ranking in for every candidate) **Don't forget to **`\\submit`** when you're done**:\n\*\*\*\*\*\*\*\*\*\*")
-        candidates = list(standing[post].keys())
+        candidates = list(standing[post])
         random.shuffle(candidates)
         # Message the member with the shuffled candidate list, each candidate in a seperate message, record the ID of the message
         if user.id not in voting_messages:
@@ -419,7 +419,7 @@ async def validate(context):
                 all_reactions.append(reaction.emoji)
 
 
-    for reaction in lookup.keys():
+    for reaction in lookup:
         # Check if they put the same ranking to more than one candidate, and if so, tell them they fucked up
         if all_reactions.count(reaction) > 1:
             await context.send("You can't react to more than one candidate with the same value")
@@ -433,7 +433,7 @@ async def validate(context):
             valid = False
         else:
             for i in range(max_value):
-                react_to_check = list(lookup.keys())[i]
+                react_to_check = list(lookup)[i]
                 if react_to_check not in all_reactions:
                     await context.send("Looks like you've skipped ranking " + react_to_check)
                     valid = False
