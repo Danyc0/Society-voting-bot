@@ -2,9 +2,9 @@ import os
 import time
 import random
 import requests
-from dotenv import load_dotenv
 import re
 import pickle
+from dotenv import load_dotenv
 
 import pyrankvote
 from pyrankvote import Candidate, Ballot
@@ -12,20 +12,23 @@ from pyrankvote import Candidate, Ballot
 from discord.ext import commands
 from discord.channel import DMChannel
 
-## Workflow
+# Workflow
 # Setup the post:        \setup PGR
 # Check the setup:       \posts
 # Members register:      \register
-# Members stand:         \stand PGR 
+# Members stand:         \stand PGR
 # List candidates:       \candidates PGR
 # Voting begins:         \begin PGR
 # Voters vote:           Reacts
 # Voters submit:         \submit
 # Voting ends + results: \end
 
-#TODO:
-#  Allow resubmitting a ballot, by storing an anonymised token alongside the vote, which is the hash of their userID+a password, the password can either be made by them or by the system, but then when they resubmit, they must provide the password. Alongside this there must be a list of users that have voted. If they've voted and the hash doesn't exist, incorrect password, if they've voted and the hash already exist, then update the vote, if they haven't voted and the hash doesn't exist, add the hash, if they haven't voted and the hash exists, error.
-#  PEP8
+# TODO:
+#  Allow resubmitting a ballot, by storing an anonymised token alongside the vote, which is the hash of their
+#   userID+a password, the password can either be made by them or by the system, but then when they resubmit,
+#   they must provide the password. Alongside this there must be a list of users that have voted. If they've voted
+#   and the hash doesn't exist, incorrect password, if they've voted and the hash already exist, then update the vote,
+#   if they haven't voted and the hash doesn't exist, add the hash, if they haven't voted and the hash exists, error.
 #  Re-test
 
 random.seed(time.time())
@@ -44,16 +47,21 @@ STANDING_FILE = os.getenv('STANDING_FILE')
 PREFIX = '\\'
 
 RULES_STRING = (
-                f'To stand for a position, DM me with `{PREFIX}stand <POST>`, where <POST> is the post you wish to stand for (without the \'<>\'), you can see all posts available by sending `{PREFIX}posts`\n'
-                'When voting begins, I will DM you a ballot paper. To vote, you\'ll need to react to the candidates in that ballot paper, where :one: is your top candidate, :two: is your second top candidate, etc\n'
+                f'To stand for a position, DM me with `{PREFIX}stand <POST>`, where <POST> is the post you wish to '
+                'stand for (without the \'<>\'), you can see all posts available by sending `{PREFIX}posts`\n'
+                'When voting begins, I will DM you a ballot paper. To vote, you\'ll need to react to the candidates '
+                'in that ballot paper, where :one: is your top candidate, :two: is your second top candidate, etc\n'
                 'The rules for filling in the ballot are as follows:\n'
-                '- You don\'t have to use all your rankings, but don\'t leave any gaps (e.g. you can\'t give a candidate :three: without giving some candidate :two:)\n'
+                '- You don\'t have to use all your rankings, but don\'t leave any gaps '
+                '(e.g. you can\'t give a candidate :three: without giving some candidate :two:)\n'
                 '- Don\'t react with any reactions other than the number reacts :one: - :nine:\n'
-                '- Don\'t react with a ranking higher than the number of candidates (e.g. if there are three candidates, don\'t react :four: to any candidates)\n'
+                '- Don\'t react with a ranking higher than the number of candidates '
+                '(e.g. if there are three candidates, don\'t react :four: to any candidates)\n'
                 '- Don\'t vote for one candidate multiple times\n'
                 '- Don\'t give the same ranking to multiple candidates\n\n'
                 f'**Once you are happy with your ballot, please submit your vote by sending **`{PREFIX}submit`\n'
-                'When you submit your ballot, it will be checked against the rules and if something\'s not right, you\'ll be asked to fix it and will need to submit again'
+                'When you submit your ballot, it will be checked against the rules and if something\'s not right, '
+                'you\'ll be asked to fix it and will need to submit again'
     )
 
 EMOJI_LOOKUP = {
@@ -85,7 +93,7 @@ standing = {}
 # Format = {<User ID>: [(<Candidate Student ID>, <Message ID>), ...], ...}
 voting_messages = {}
 
-# Populate registered_members and standing from backups 
+# Populate registered_members and standing from backups
 try:
     with open(VOTERS_FILE, 'rb') as in_file:
         registered_members = pickle.load(in_file)
@@ -101,12 +109,12 @@ except IOError:
 def get_members():
     page = requests.get(URL, cookies={'.ASPXAUTH': COOKIE}).content.decode('utf-8')
 
-    table = re.search('All Members[\s\S]*?\d+ member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>', page).group(1)
-    members_parse = re.findall('/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)', table)
+    table = re.search(r'All Members[\s\S]*?\d+ member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>', page).group(1)
+    members_parse = re.findall(r'/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)', table)
     all_members = {int(member[2]): (f'{member[1]} {member[0]}') for member in members_parse}
 
-    table = re.search('Standard Membership[\s\S]*?\d+ member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>', page).group(1)
-    members_parse = re.findall('/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)', table)
+    table = re.search(r'Standard Membership[\s\S]*?\d+ member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>', page).group(1)
+    members_parse = re.findall(r'/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)', table)
     standard_membership = {int(member[2]): (f'{member[1]} {member[0]}') for member in members_parse}
 
     # Format = {<Student Number>: <Name>}
@@ -159,7 +167,7 @@ async def on_ready():
 
 @bot.command(name='members')
 async def members(context):
-    if not is_commitee_channel(context.channel):
+    if not is_committee_channel(context.channel):
         return
 
     members = get_members()
@@ -188,9 +196,12 @@ async def register(context, student_number: int):
         if author in registered_members:
             output_str = f'Looks like your Discord username is already registered to {registered_members[author]}'
         elif student_number in registered_members.values():
-            output_str = 'Looks like your student ID is already registered to someone else, please contact a committee member'
-            other_user = await bot.fetch_user([key for key, value in registered_members.items() if value == student_number][0]).name
-            print(context.author, 'tried to register student ID', student_number, 'but it is already registered to', other_user)
+            output_str = ('Looks like your student ID is already registered to someone else, '
+                          'please contact a committee member')
+            other_user_id = [key for key, value in registered_members.items() if value == student_number][0]
+            other_user = await bot.fetch_user(other_user_id).name
+            print(context.author, 'tried to register student ID', student_number,
+                  'but it is already registered to', other_user)
         else:
             registered_members[author] = student_number
             output_str = f'Thank you {members[registered_members[author]]}, you are now registered\n\n{RULES_STRING}'
@@ -208,14 +219,15 @@ async def stand(context, *post):
     if not is_dm(context.channel):
         await context.send('You need to DM me for this instead')
         return
-    
+
     post = ' '.join(post)
     if not post:
         await context.send(f'Must supply the post you are running for, usage:`{PREFIX}stand <post>`')
         return
     matching_posts = match_post(post)
     if not matching_posts:
-        await context.send(f'Looks like that post isn\'t available for this election, use `{PREFIX}posts` to see the posts up for election')
+        await context.send('Looks like that post isn\'t available for this election, '
+                           f'use `{PREFIX}posts` to see the posts up for election')
         return
     post = matching_posts[0]
     if post == current_live_post:
@@ -228,15 +240,17 @@ async def stand(context, *post):
     output_str = 'Error'
     if author in registered_members:
         if [i for i in standing[post] if i == registered_members[author]]:
-            output_str = f'It looks like you, {members[registered_members[author]]} are already standing for the position of: {post}'
-        else: 
+            output_str = (f'It looks like you, {members[registered_members[author]]} are already '
+                          'standing for the position of: {post}')
+        else:
             standing[post][registered_members[author]] = Candidate(members[registered_members[author]])
-            output_str = f'Congratulations {members[registered_members[author]]}, you are now standing for the position of: {post}'
+            output_str = (f'Congratulations {members[registered_members[author]]}, '
+                          'you are now standing for the position of: {post}')
             print(registered_members[author], 'is now standing for', post)
     else:
         output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
         print(context.author.name, 'has failed to stand for', post)
-        
+
     save_standing()
     await context.send(output_str)
 
@@ -253,7 +267,8 @@ async def standdown(context, *post):
         return
     matching_posts = match_post(post)
     if not matching_posts:
-        await context.send(f'Looks like that post isn\'t available for this election, use `{PREFIX}posts` to see the posts up for election`')
+        await context.send('Looks like that post isn\'t available for this election, '
+                           f'use `{PREFIX}posts` to see the posts up for election`')
         return
     post = matching_posts[0]
 
@@ -285,7 +300,8 @@ async def posts(context):
     await context.send(output_str)
 
 
-@bot.command(name='list_candidates', help='Prints the candidates for the specified post (or all posts if no post is given)')
+@bot.command(name='list_candidates',
+             help='Prints the candidates for the specified post (or all posts if no post is given)')
 async def list_candidates(context, *post):
     if is_voting_channel(context.channel):
         return
@@ -305,10 +321,11 @@ async def list_candidates(context, *post):
             random.shuffle(candidates)
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
-                output_str += f' - {members[candidate]}\n')
-            output_str += '--------\n')
+                output_str += f' - {members[candidate]}\n'
+            output_str += '--------\n'
         else:
-            output_str = f'Looks like that post isn\'t in this election, use `{PREFIX}posts` to see the posts up for election`')
+            output_str = ('Looks like that post isn\'t in this election, '
+                          f'use `{PREFIX}posts` to see the posts up for election`')
     else:
         for post in standing:
             candidates = list(standing[post])
@@ -316,7 +333,7 @@ async def list_candidates(context, *post):
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
                 output_str += f' - {members[candidate]}\n'
-            output_str += ('--------\n')
+            output_str += '--------\n'
     await context.send(output_str)
 
 
@@ -325,7 +342,8 @@ async def rules(context):
     if not is_voting_channel(context.channel) and not is_dm(context.author):
         return
 
-    await context.send(f'To register to vote, DM me with `{PREFIX}register <YOUR STUDENT ID NUMBER>` (without the \'<>\')\n{RULES_STRING}')
+    await context.send(f'To register to vote, DM me with `{PREFIX}register <YOUR STUDENT ID NUMBER>`'
+                       '(without the \'<>\')\n{RULES_STRING}')
 
 
 @bot.command(name='setup', help='Creates the specified post')
@@ -364,7 +382,8 @@ async def begin(context, *post):
         return
     matching_posts = match_post(post)
     if not matching_posts:
-        await context.send(f'Looks like that post isn\'t available for this election, use `{PREFIX}posts` to see the posts up for election`')
+        await context.send('Looks like that post isn\'t available for this election, '
+                           f'use `{PREFIX}posts` to see the posts up for election`')
         return
     post = matching_posts[0]
 
@@ -379,10 +398,10 @@ async def begin(context, *post):
     for voter in registered_members:
         user = await bot.fetch_user(voter)
         await user.send(f'Ballot paper for {post}, there are {num_candidates} candidates.'
-                        '(Please react to the messages below with :one:-{max_react}). '
-                        '**Don\'t forget to **`{PREFIX}submit`** when you\'re done**:\n\*\*\*\*\*\*\*\*\*\*')
+                        f'(Please react to the messages below with :one:-{max_react}). '
+                        f'**Don\'t forget to **`{PREFIX}submit`** when you\'re done**:\n')
 
-        # Message the member with the shuffled candidate list, each candidate in a separate message, record the ID of the message
+        # Message the member with the shuffled candidate list, each in a separate message, record the ID of the message
         candidates = list(standing[post])
         random.shuffle(candidates)
         voting_messages[user.id] = []
@@ -390,13 +409,13 @@ async def begin(context, *post):
             message = await user.send(f' - {members[candidate]}')
             # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
             voting_messages[user.id].append((candidate, message.id))
-        #await user.send(f'\*\*\*\*\*\*\*\*\*\*\nEnd of Ballot Paper for {post}')
+        await user.send(f'End of Ballot Paper for {post}')
 
     await context.send(f'Voting has now begun for {post}\n'
-                        'All registered voters will have just received a message from me. '
-                        'Please vote by reacting to the candidates listed in your DMs where '
-                        ':one: is your top candidate, :two: is your second top candidate, etc. '
-                        'You do not need to put a ranking in for every candidate')
+                       'All registered voters will have just received a message from me. '
+                       'Please vote by reacting to the candidates listed in your DMs where '
+                       ':one: is your top candidate, :two: is your second top candidate, etc. '
+                       'You do not need to put a ranking in for every candidate')
 
 
 @bot.command(name='validate', help='Checks to see if your vote will be accepted')
@@ -407,7 +426,7 @@ async def validate(context):
     author = context.author.id
     if author not in voting_messages:
         return False
-    
+
     await context.send('Checking vote validity ...')
     valid = True
     all_reactions = []
@@ -444,7 +463,7 @@ async def validate(context):
             for i in range(max_value):
                 react_to_check = list(EMOJI_LOOKUP)[i]
                 if react_to_check not in all_reactions:
-                    output_str += f'Looks like you\'ve skipped ranking {react_to_check}\n')
+                    output_str += f'Looks like you\'ve skipped ranking {react_to_check}\n'
                     valid = False
 
     await context.send(output_str)
@@ -492,7 +511,7 @@ async def end(context):
         return
     if not is_committee_member(context.author):
         return
-    
+
     last_live_post = current_live_post
     current_live_post = None
     voting_messages.clear()
@@ -511,12 +530,10 @@ async def end(context):
 
     print('Result:', results)
     print('Winner:', winner)
-    
-    
+
     await committee_channel.send('The votes were tallied as follows:\n'
-                                f'```{results}```\n'
-                                f'The winning candidate for {last_live_post} is: {winner}')
-        
+                                 f'```{results}```\n'
+                                 f'The winning candidate for {last_live_post} is: {winner}')
+
 
 bot.run(TOKEN)
-
