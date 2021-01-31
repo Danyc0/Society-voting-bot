@@ -1,5 +1,5 @@
 # CSS voting-bot
-A Discord bot for doing basic CSS's elections at the University of Birmingham. The voting system used is Instant Runoff Voting.
+A Discord bot for doing CSS's elections at the University of Birmingham. The voting system used is Instant Runoff Voting.
 
 ## Dependencies
     pip install -U Discord.py python-dotenv pyrankvote
