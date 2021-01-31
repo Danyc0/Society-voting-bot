@@ -14,23 +14,15 @@ from discord.channel import DMChannel
 
 # Workflow
 # See current members:   \members
-# Setup the post:        \setup PGR
+# Setup the post:        \setup <POST NAME>
 # Check the setup:       \posts
 # Members register:      \register
-# Members stand:         \stand PGR
-# List candidates:       \candidates PGR
-# Voting begins:         \begin PGR
+# Members stand:         \stand <POST NAME>
+# List candidates:       \candidates <POST NAME>
+# Voting begins:         \begin <POST NAME>
 # Voters vote:           Reacts
 # Voters submit:         \submit
 # Voting ends + results: \end
-
-# TODO:
-#  Allow resubmitting a ballot, by storing an anonymised token alongside the vote, which is the hash of their
-#   userID+a password, the password can either be made by them or by the system, but then when they resubmit,
-#   they must provide the password. Alongside this there must be a list of users that have voted. If they've voted
-#   and the hash doesn't exist, incorrect password, if they've voted and the hash already exist, then update the vote,
-#   if they haven't voted and the hash doesn't exist, add the hash, if they haven't voted and the hash exists, error.
-#  Re-test
 
 random.seed(time.time())
 
