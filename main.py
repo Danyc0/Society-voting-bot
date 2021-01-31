@@ -13,6 +13,7 @@ from discord.ext import commands
 from discord.channel import DMChannel
 
 # Workflow
+# See current members:   \members
 # Setup the post:        \setup PGR
 # Check the setup:       \posts
 # Members register:      \register
@@ -48,7 +49,7 @@ PREFIX = '\\'
 
 RULES_STRING = (
                 f'To stand for a position, DM me with `{PREFIX}stand <POST>`, where <POST> is the post you wish to '
-                'stand for (without the \'<>\'), you can see all posts available by sending `{PREFIX}posts`\n'
+                f'stand for (without the \'<>\'), you can see all posts available by sending `{PREFIX}posts`\n'
                 'When voting begins, I will DM you a ballot paper. To vote, you\'ll need to react to the candidates '
                 'in that ballot paper, where :one: is your top candidate, :two: is your second top candidate, etc\n'
                 'The rules for filling in the ballot are as follows:\n'
@@ -241,11 +242,11 @@ async def stand(context, *post):
     if author in registered_members:
         if [i for i in standing[post] if i == registered_members[author]]:
             output_str = (f'It looks like you, {members[registered_members[author]]} are already '
-                          'standing for the position of: {post}')
+                          f'standing for the position of: {post}')
         else:
             standing[post][registered_members[author]] = Candidate(members[registered_members[author]])
             output_str = (f'Congratulations {members[registered_members[author]]}, '
-                          'you are now standing for the position of: {post}')
+                          f'you are now standing for the position of: {post}')
             print(registered_members[author], 'is now standing for', post)
     else:
         output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
@@ -288,9 +289,7 @@ async def standdown(context, *post):
 
 @bot.command(name='posts', help='Prints the posts available to stand for in this election')
 async def posts(context):
-    if not is_dm(context.channel):
-        return
-    if not is_voting_channel(context.channel):
+    if not is_dm(context.channel) and not is_voting_channel(context.channel):
         return
 
     output_str = '```'
@@ -300,10 +299,10 @@ async def posts(context):
     await context.send(output_str)
 
 
-@bot.command(name='list_candidates',
+@bot.command(name='candidates',
              help='Prints the candidates for the specified post (or all posts if no post is given)')
 async def list_candidates(context, *post):
-    if is_voting_channel(context.channel):
+    if not is_voting_channel(context.channel):
         return
     if not standing:
         await context.send('There are currently no posts set up in this election')
@@ -334,7 +333,9 @@ async def list_candidates(context, *post):
             for candidate in candidates:
                 output_str += f' - {members[candidate]}\n'
             output_str += '--------\n'
-    await context.send(output_str)
+
+    if output_str:
+        await context.send(output_str)
 
 
 @bot.command(name='rules', help='Prints the rules and procedures for the election')
@@ -342,13 +343,13 @@ async def rules(context):
     if not is_voting_channel(context.channel) and not is_dm(context.author):
         return
 
-    await context.send(f'To register to vote, DM me with `{PREFIX}register <YOUR STUDENT ID NUMBER>`'
-                       '(without the \'<>\')\n{RULES_STRING}')
+    await context.send(f'To register to vote, DM me with `{PREFIX}register <YOUR STUDENT ID NUMBER>` '
+                       f'(without the \'<>\')\n{RULES_STRING}')
 
 
 @bot.command(name='setup', help='Creates the specified post')
 async def setup(context, *post):
-    if is_committee_channel(context.channel):
+    if not is_committee_channel(context.channel):
         return
 
     post = ' '.join(post)
@@ -397,7 +398,7 @@ async def begin(context, *post):
 
     for voter in registered_members:
         user = await bot.fetch_user(voter)
-        await user.send(f'Ballot paper for {post}, there are {num_candidates} candidates.'
+        await user.send(f'Ballot paper for {post}, there are {num_candidates} candidates. '
                         f'(Please react to the messages below with :one:-{max_react}). '
                         f'**Don\'t forget to **`{PREFIX}submit`** when you\'re done**:\n')
 
@@ -456,7 +457,7 @@ async def validate(context):
     # Check if they try to do :three: before :two:, etc
     if len(all_reactions) != 0:
         max_value = EMOJI_LOOKUP[max(all_reactions, key=lambda x: EMOJI_LOOKUP[x])]
-        if max_value > len(standing[current_live_post]):
+        if max_value >= len(standing[current_live_post]):
             output_str += 'You\'ve given a ranking that is higher than the number of candidates\n'
             valid = False
         else:
@@ -466,6 +467,8 @@ async def validate(context):
                     output_str += f'Looks like you\'ve skipped ranking {react_to_check}\n'
                     valid = False
 
+    if not output_str:
+        output_str = 'Your vote was valid'
     await context.send(output_str)
     return valid
 
@@ -485,7 +488,7 @@ async def submit(context):
 
     valid = await validate(context)
     if not valid:
-        await context.send('Your vote was not valid, so was not cast, please correct your ballot and resubmit')
+        await context.send('Your vote was not cast, please correct your ballot and resubmit')
         return
 
     ballot_list = [''] * len(standing[current_live_post])
@@ -499,7 +502,7 @@ async def submit(context):
 
     votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
     voted.append(author)
-    await context.send('Your vote was valid and was successfully cast')
+    await context.send('Your vote was successfully cast')
     print('Votes cast:', len(votes), '- Votes not yet cast:', len(registered_members)-len(votes))
 
 
@@ -533,7 +536,7 @@ async def end(context):
 
     await committee_channel.send('The votes were tallied as follows:\n'
                                  f'```{results}```\n'
-                                 f'The winning candidate for {last_live_post} is: {winner}')
+                                 f'The winning candidate for the post of {last_live_post} is: {winner}')
 
 
 bot.run(TOKEN)
