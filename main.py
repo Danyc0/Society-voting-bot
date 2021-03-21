@@ -168,7 +168,7 @@ async def members(context):
     for member in members.items():
         if (len(output_str) + len(str(member)) + 5) > 2000:
             output_str += '```'
-            await(context.send(output_str))
+            await context.send(output_str)
             output_str = '```'
         output_str += f'{member}\n'
     output_str += '```'
