@@ -8,7 +8,7 @@ A Discord bot for doing CSS's elections at the University of Birmingham. The vot
 
 You'll need to create a discord bot of your own in the [Discord Developer Portal](https://discord.com/developers/applications) with View Channels and Read Messages permissions. It's also handy if you have an empty server (or "guild") for you to test in. This section of [this guide](https://realpython.com/how-to-make-a-discord-bot-python/#how-to-make-a-discord-bot-in-the-developer-portal) may be helpful to set that up.
 
-You'll need to set three environment variables:
+You'll need to set seven environment variables:
 * DISCORD TOKEN -> The Discord token for the bot you created (available on your bot page in the developer portal).
 * GUILD_URL -> The URL of the UoB Guild of Students members page (make sure it's listed by group).
 * GUILD_COOKIE -> Your Guild of Students session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Guild of Students website. You must be a committee member).
