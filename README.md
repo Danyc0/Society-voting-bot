@@ -22,3 +22,4 @@ You can put these in a .env file in the repo directory as it uses dotenv (see [h
 ## Contributions
 
 In short, patches welcome. If you raise a PR, I'll review it, test it, and (probably) merge it.
+If you find any bugs/problems or have any suggestions, please raise an issue.
