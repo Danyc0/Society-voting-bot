@@ -303,27 +303,26 @@ async def list_candidates(context, *post):
     post = ' '.join(post)
 
     output_str = ''
-    members = get_members()
     if post:
         matching_posts = match_post(post)
         if matching_posts:
             post = matching_posts[0]
-            candidates = list(standing[post])
+            candidates = [str(candidate) for candidate in standing[post].values()]
             random.shuffle(candidates)
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
-                output_str += f' - {members[candidate]}\n'
+                output_str += f' - {candidate}\n'
             output_str += '--------\n'
         else:
             output_str = ('Looks like that post isn\'t in this election, '
                           f'use `{PREFIX}posts` to see the posts up for election`')
     else:
         for post in standing:
-            candidates = list(standing[post])
+            candidates = [str(candidate) for candidate in standing[post].values()]
             random.shuffle(candidates)
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
-                output_str += f' - {members[candidate]}\n'
+                output_str += f' - {candidate}\n'
             output_str += '--------\n'
 
     if output_str:
@@ -380,8 +379,6 @@ async def begin(context, *post):
         return
     post = matching_posts[0]
 
-    members = get_members()
-
     current_live_post = post
     print('Voting has now begun for post:', post)
 
@@ -395,13 +392,13 @@ async def begin(context, *post):
                         f'**Don\'t forget to **`{PREFIX}submit`** when you\'re done**:\n')
 
         # Message the member with the shuffled candidate list, each in a separate message, record the ID of the message
-        candidates = list(standing[post])
+        candidates = list(standing[post].items())
         random.shuffle(candidates)
         voting_messages[user.id] = []
-        for candidate in candidates:
-            message = await user.send(f' - {members[candidate]}')
+        for student_id, candidate in candidates:
+            message = await user.send(f' - {str(candidate)}')
             # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
-            voting_messages[user.id].append((candidate, message.id))
+            voting_messages[user.id].append((student_id, message.id))
         await user.send(f'End of Ballot Paper for {post}')
 
     await context.send(f'Voting has now begun for {post}\n'
