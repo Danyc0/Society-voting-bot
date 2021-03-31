@@ -17,6 +17,7 @@ You'll need to set seven environment variables:
 * VOTERS_FILE -> The file that the registered voter list is backed up to.
 * STANDING_FILE -> The file that the standing candidates list is backed up to.
 * SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
+* SECRETARY_DETAILS -> The name and contact details of the secretary. This is needed in case a candidate cannot make the live election call.
 
 You can put these in a .env file in the repo directory as it uses dotenv (see [here](https://pypi.org/project/python-dotenv/) for usage) so you don't have to keep them in your environment.
 

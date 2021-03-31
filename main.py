@@ -39,6 +39,7 @@ VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
 VOTERS_FILE = os.getenv('VOTERS_FILE')
 STANDING_FILE = os.getenv('STANDING_FILE')
 SHEET_ID = os.getenv('SHEET_ID')
+SECRETARY_DETAILS = os.getenv('SECRETARY_DETAILS')
 
 GOOGLE_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
@@ -265,7 +266,12 @@ async def stand(context, *input):
         else:
             standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email)
             output_str = (f'Congratulations {members[registered_members[author]]}, '
-                          f'you are now standing for the position of: {post}')
+                          f'you are now standing for the position of {post}.\n\n'
+                          'Now you\'ll need to prepare a 2 minute speech to be given in the election call.\n'
+                          f'If you have any questions please contact the secretary ({SECRETARY_DETAILS}), or someone '
+                          'else on the committee.\n'
+                          'If you can\'t make it to the actual election call, you must get in touch with the secretary '
+                          'ASAP to sort out alternative arrangements.')
             print(registered_members[author], 'is now standing for', post)
     else:
         output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
