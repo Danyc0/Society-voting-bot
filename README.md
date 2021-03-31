@@ -16,8 +16,11 @@ You'll need to set seven environment variables:
 * VOTING_CHANNEL_ID -> The Discord channel ID for the voting channel, this is where elections are started by committee members. This should be a channel only available to members.
 * VOTERS_FILE -> The file that the registered voter list is backed up to.
 * STANDING_FILE -> The file that the standing candidates list is backed up to.
+* SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
 
 You can put these in a .env file in the repo directory as it uses dotenv (see [here](https://pypi.org/project/python-dotenv/) for usage) so you don't have to keep them in your environment.
+
+You will also need a token.json file to authorise access to the Google Sheets API and a Google account with access to the candidates spreadsheet. This guide will generate the correct token, as long as you set it up to use the "auth/spreadsheets" scope, in both the OAuth Credentials step, and the example code.
 
 ## Contributions
 

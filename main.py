@@ -6,6 +6,9 @@ import re
 import pickle
 from dotenv import load_dotenv
 
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+
 import pyrankvote
 from pyrankvote import Candidate, Ballot
 
@@ -35,13 +38,17 @@ COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
 VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
 VOTERS_FILE = os.getenv('VOTERS_FILE')
 STANDING_FILE = os.getenv('STANDING_FILE')
+SHEET_ID = os.getenv('SHEET_ID')
+
+GOOGLE_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 # Set the command prefix to be '\'
 PREFIX = '\\'
 
 RULES_STRING = (
-                f'To stand for a position, DM me with `{PREFIX}stand <POST>`, where <POST> is the post you wish to '
-                f'stand for (without the \'<>\'), you can see all posts available by sending `{PREFIX}posts`\n'
+                f'To stand for a position, DM me with `{PREFIX}stand <POST> <EMAIL>`, where <POST> is the post you '
+                'wish to stand for and <EMAIL> is your email address (both without the \'<>\') , you can see all '
+                f'posts available by sending `{PREFIX}posts`\n\n'
                 'When voting begins, I will DM you a ballot paper. To vote, you\'ll need to react to the candidates '
                 'in that ballot paper, where :one: is your top candidate, :two: is your second top candidate, etc\n'
                 'The rules for filling in the ballot are as follows:\n'
@@ -81,7 +88,7 @@ votes = []
 voted = []
 # Format = {<Discord Username>: <Student Number>}
 registered_members = {}
-# Format = {<Post>: {<Student Number>: <Candidate Object>, ...}, ...}
+# Format = {<Post>: {<Student Number>: (<Candidate Object>, <Email>), ...}, ...}
 standing = {}
 # Format = {<User ID>: [(<Candidate Student ID>, <Message ID>), ...], ...}
 voting_messages = {}
@@ -97,6 +104,11 @@ try:
         standing = pickle.load(in_file)
 except IOError:
     print('No standing file:', STANDING_FILE)
+
+# Read in the Google Sheets API token
+creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
+# Connect to the sheets API
+service = build('sheets', 'v4', credentials=creds)
 
 
 def get_members():
@@ -124,6 +136,20 @@ def save_voters():
 def save_standing():
     with open(STANDING_FILE, 'wb') as out_file:
         pickle.dump(standing, out_file)
+
+    service.spreadsheets().values().clear(spreadsheetId=SHEET_ID, range='A2:D100').execute()
+    values = []
+    for post, candidates in standing.items():
+        for student_id, candidate in candidates.items():
+            if student_id == 0:
+                continue
+            values.append([str(candidate[0]), candidate[1], str(student_id), post])
+
+    body = {
+        'values': values
+    }
+    service.spreadsheets().values().update(spreadsheetId=SHEET_ID, range='A2',
+                                           valueInputOption='RAW', body=body).execute()
 
 
 def is_dm(channel):
@@ -208,14 +234,15 @@ async def register(context, student_number: int):
 
 
 @bot.command(name='stand', help='Stand for a post')
-async def stand(context, *post):
+async def stand(context, *input):
     if not is_dm(context.channel):
         await context.send('You need to DM me for this instead')
         return
-
-    post = ' '.join(post)
+    email = input[-1]
+    post = ' '.join(input[:-1])
     if not post:
-        await context.send(f'Must supply the post you are running for, usage:`{PREFIX}stand <post>`')
+        await context.send('Must supply the post you are running for and your email address, '
+                           f'usage:`{PREFIX}stand <POST> <EMAIL>`')
         return
     matching_posts = match_post(post)
     if not matching_posts:
@@ -236,7 +263,7 @@ async def stand(context, *post):
             output_str = (f'It looks like you, {members[registered_members[author]]} are already '
                           f'standing for the position of: {post}')
         else:
-            standing[post][registered_members[author]] = Candidate(members[registered_members[author]])
+            standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email)
             output_str = (f'Congratulations {members[registered_members[author]]}, '
                           f'you are now standing for the position of: {post}')
             print(registered_members[author], 'is now standing for', post)
@@ -307,7 +334,7 @@ async def list_candidates(context, *post):
         matching_posts = match_post(post)
         if matching_posts:
             post = matching_posts[0]
-            candidates = [str(candidate) for candidate in standing[post].values()]
+            candidates = [str(candidate) for candidate, _ in standing[post].values()]
             random.shuffle(candidates)
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
@@ -318,7 +345,7 @@ async def list_candidates(context, *post):
                           f'use `{PREFIX}posts` to see the posts up for election`')
     else:
         for post in standing:
-            candidates = [str(candidate) for candidate in standing[post].values()]
+            candidates = [str(candidate) for candidate, _ in standing[post].values()]
             random.shuffle(candidates)
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
@@ -349,7 +376,7 @@ async def setup(context, *post):
         await context.send(f'{post} already exists')
         return
 
-    standing[post] = {0: Candidate('RON (Re-Open Nominations)')}
+    standing[post] = {0: (Candidate('RON (Re-Open Nominations)'), 'ron@example.com')}
 
     save_standing()
 
@@ -395,8 +422,8 @@ async def begin(context, *post):
         candidates = list(standing[post].items())
         random.shuffle(candidates)
         voting_messages[user.id] = []
-        for student_id, candidate in candidates:
-            message = await user.send(f' - {str(candidate)}')
+        for student_id, details in candidates:
+            message = await user.send(f' - {str(details[0])}')
             # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
             voting_messages[user.id].append((student_id, message.id))
         await user.send(f'End of Ballot Paper for {post}')
@@ -487,7 +514,7 @@ async def submit(context):
         message = await context.author.fetch_message(message_id)
         if message.reactions:
             reaction = message.reactions[0].emoji
-            ballot_list[EMOJI_LOOKUP[reaction]] = standing[current_live_post][candidate]
+            ballot_list[EMOJI_LOOKUP[reaction]] = standing[current_live_post][candidate][0]
 
     votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
     voted.append(author)
@@ -514,7 +541,7 @@ async def end(context):
         user = await bot.fetch_user(voter)
         await user.send(f'Voting has now ended for post: {last_live_post}')
 
-    results = pyrankvote.instant_runoff_voting(list(standing[last_live_post].values()), votes)
+    results = pyrankvote.instant_runoff_voting([candidate for candidate, _ in standing[last_live_post].values()], votes)
     votes.clear()
 
     # Announce the scores and the winner to the committee
