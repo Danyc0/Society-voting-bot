@@ -55,7 +55,7 @@ RULES_STRING = (
                 f'**Once you are happy with your ballot, please submit your vote by sending **`{PREFIX}submit`\n'
                 'When you submit your ballot, it will be checked against the rules and if something\'s not right, '
                 'you\'ll be asked to fix it and will need to submit again'
-    )
+)
 
 EMOJI_LOOKUP = {
     '1️⃣': 0,
