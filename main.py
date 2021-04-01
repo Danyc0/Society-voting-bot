@@ -57,6 +57,8 @@ SMTP_PORT = os.getenv('SMTP_PORT')
 SENDER_EMAIL = os.getenv('SENDER_EMAIL')
 SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
 
+VOTING_CODE = os.getenv('VOTING_CODE').upper()
+
 
 GOOGLE_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
@@ -77,7 +79,8 @@ RULES_STRING = (
                 '(e.g. if there are three candidates, don\'t react :four: to any candidates)\n'
                 '- Don\'t vote for one candidate multiple times\n'
                 '- Don\'t give the same ranking to multiple candidates\n\n'
-                f'**Once you are happy with your ballot, please submit your vote by sending **`{PREFIX}submit`\n'
+                f'**Once you are happy with your ballot, please submit your vote by sending **`{PREFIX}submit <CODE>` '
+                'where <CODE> is the code given out in the election call\n'
                 'When you submit your ballot, it will be checked against the rules and if something\'s not right, '
                 'you\'ll be asked to fix it and will need to submit again'
 )
@@ -468,7 +471,7 @@ async def begin(context, *post):
         user = await bot.fetch_user(voter)
         await user.send(f'Ballot paper for {post}, there are {num_candidates} candidates. '
                         f'(Please react to the messages below with :one:-{max_react}). '
-                        f'**Don\'t forget to **`{PREFIX}submit`** when you\'re done**:\n')
+                        f'**Don\'t forget to **`{PREFIX}submit <CODE>`** when you\'re done**:\n')
 
         # Message the member with the shuffled candidate list, each in a separate message, record the ID of the message
         candidates = list(standing[post].items())
@@ -542,7 +545,7 @@ async def validate(context):
 
 
 @bot.command(name='submit', help='Submits your vote')
-async def submit(context):
+async def submit(context, code=None):
     if not is_dm(context.channel):
         await context.send('You need to DM this to me instead')
         return
@@ -552,6 +555,14 @@ async def submit(context):
         return
     if author in voted:
         await context.send('You have already cast your vote and it cannot be changed')
+        return
+    if not code:
+        await context.send('You must supply the code given out in the election call, your vote was not cast')
+        return
+
+    if code.upper() != VOTING_CODE:
+        await context.send('The code you have supplied is incorrect, '
+                           'you must use the one given out in the election call, your vote was not cast')
         return
 
     valid = await validate(context)

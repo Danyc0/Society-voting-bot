@@ -29,6 +29,9 @@ You'll need to set seven environment variables:
 * SENDER_EMAIL -> The email from which to send emails.
 * SENDER_PASSWORD -> The password for the SENDER_EMAIL. If using gmail you'll need to enable insecure apps and set up an app-specific password.
 
+
+* VOTING_CODE -> The code required to submit a vote, used to ensure only people in the live election call are able to vote. This is not case sensitive and must be given out during the call. 
+
 You can put these in a .env file in the repo directory as it uses dotenv (see [here](https://pypi.org/project/python-dotenv/) for usage) so you don't have to keep them in your environment.
 
 You will also need a token.json file to authorise access to the Google Sheets API and a Google account with access to the candidates spreadsheet. This guide will generate the correct token, as long as you set it up to use the "auth/spreadsheets" scope, in both the OAuth Credentials step, and the example code.
