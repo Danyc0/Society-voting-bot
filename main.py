@@ -37,16 +37,21 @@ random.seed(time.time())
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
+VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
+
 URL = os.getenv('GUILD_URL')
 # This should be extracted from your .ASPXAUTH cookie
 COOKIE = os.getenv('GUILD_COOKIE')
-COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
-VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
+
 VOTERS_FILE = os.getenv('VOTERS_FILE')
 STANDING_FILE = os.getenv('STANDING_FILE')
+
 SHEET_ID = os.getenv('SHEET_ID')
+
 SECRETARY_NAME = os.getenv('SECRETARY_NAME')
 SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
+
 SMTP_SERVER = os.getenv('SMTP_SERVER')
 SMTP_PORT = os.getenv('SMTP_PORT')
 SENDER_EMAIL = os.getenv('SENDER_EMAIL')

@@ -10,15 +10,20 @@ You'll need to create a discord bot of your own in the [Discord Developer Portal
 
 You'll need to set seven environment variables:
 * DISCORD TOKEN -> The Discord token for the bot you created (available on your bot page in the developer portal).
-* GUILD_URL -> The URL of the UoB Guild of Students members page (make sure it's listed by group).
-* GUILD_COOKIE -> Your Guild of Students session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Guild of Students website. You must be a committee member).
 * COMMITTEE_CHANNEL_ID -> The Discord channel ID for the committee channel, this is where you setup new posts, get the members list and see results. This should be a channel only available to committee members.
 * VOTING_CHANNEL_ID -> The Discord channel ID for the voting channel, this is where elections are started by committee members. This should be a channel only available to members.
+
+* GUILD_URL -> The URL of the UoB Guild of Students members page (make sure it's listed by group).
+* GUILD_COOKIE -> Your Guild of Students session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Guild of Students website. You must be a committee member).
+
 * VOTERS_FILE -> The file that the registered voter list is backed up to.
 * STANDING_FILE -> The file that the standing candidates list is backed up to.
+
 * SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
+
 * SECRETARY_NAME -> The name of the current secretary.
 * SECRETARY_EMAIL -> The email address of the secretary. This is needed in case a candidate cannot make the live election call, and to notify the secretary of new candidates.
+
 * SMTP_SERVER -> The SMTP server to use when sending emails.
 * SMTP_PORT -> The SMTP port to use when sending emails.
 * SENDER_EMAIL -> The email from which to send emails.
