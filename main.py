@@ -289,9 +289,14 @@ async def stand(context, *input):
     email = input[-1]
     post = ' '.join(input[:-1])
     if not post:
-        await context.send('Must supply the post you are running for and your email address, '
+        await context.send('Must supply the post you are running for and a valid email address, '
                            f'usage:`{PREFIX}stand <POST> <EMAIL>`')
         return
+    if '@' not in email:
+        await context.send('Must supply the post you are running for and a valid email address, '
+                           f'usage:`{PREFIX}stand <POST> <EMAIL>`')
+        return
+
     matching_posts = match_post(post)
     if not matching_posts:
         await context.send('Looks like that post isn\'t available for this election, '
