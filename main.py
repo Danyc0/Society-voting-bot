@@ -159,13 +159,13 @@ def email_secretary(candidate, post, stood_down=False):
         message['To'] = SECRETARY_EMAIL
 
         if not stood_down:
-            message['Subject'] = 'New candidate standing in the upcoming CSS election'
+            message['Subject'] = 'TEST - New candidate standing in the upcoming CSS election'
             text = ('Hello,\n'
                     f'{candidate} has just stood for the position of {post} '
                     'in the upcoming CSS election,\n'
                     'Goodbye')
         else:
-            message['Subject'] = 'Candidate no longer standing in the upcoming CSS election'
+            message['Subject'] = 'TEST - Candidate no longer standing in the upcoming CSS election'
             text = ('Hello,\n'
                     f'{candidate} has just stood down from standing for the position of {post} '
                     'in the upcoming CSS election,\n'
@@ -238,12 +238,12 @@ async def members(context):
         return
 
     members = get_members()
-    output_str = '```'
+    output_str = '```\n'
     for member in members.items():
         if (len(output_str) + len(str(member)) + 5) > 2000:
             output_str += '```'
             await context.send(output_str)
-            output_str = '```'
+            output_str = '```\n'
         output_str += f'{member}\n'
     output_str += '```'
     await context.send(output_str)
@@ -372,7 +372,7 @@ async def posts(context):
         return
 
     if standing:
-        output_str = '```'
+        output_str = '```\n'
         for post in standing:
             output_str += post + '\n'
         output_str += '```'
