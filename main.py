@@ -4,6 +4,12 @@ import random
 import requests
 import re
 import pickle
+import smtplib
+import ssl
+
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 from dotenv import load_dotenv
 
 from googleapiclient.discovery import build
@@ -39,7 +45,13 @@ VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
 VOTERS_FILE = os.getenv('VOTERS_FILE')
 STANDING_FILE = os.getenv('STANDING_FILE')
 SHEET_ID = os.getenv('SHEET_ID')
-SECRETARY_DETAILS = os.getenv('SECRETARY_DETAILS')
+SECRETARY_NAME = os.getenv('SECRETARY_NAME')
+SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
+SMTP_SERVER = os.getenv('SMTP_SERVER')
+SMTP_PORT = os.getenv('SMTP_PORT')
+SENDER_EMAIL = os.getenv('SENDER_EMAIL')
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
+
 
 GOOGLE_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
@@ -127,6 +139,33 @@ def get_members():
     members = {**all_members, **standard_membership}
     members[0] = 'RON (Re-Open-Nominations)'
     return members
+
+
+def email_secretary(candidate, post, stood_down=False):
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+
+        message = MIMEMultipart('alternative')
+        message['From'] = SENDER_EMAIL
+        message['To'] = SECRETARY_EMAIL
+
+        if not stood_down:
+            message['Subject'] = 'New candidate standing in the upcoming CSS election'
+            text = ('Hello,\n'
+                    f'{candidate} has just stood for the position of {post} '
+                    'in the upcoming CSS election,\n'
+                    'Goodbye')
+        else:
+            message['Subject'] = 'Candidate no longer standing in the upcoming CSS election'
+            text = ('Hello,\n'
+                    f'{candidate} has just stood down from standing for the position of {post} '
+                    'in the upcoming CSS election,\n'
+                    'Goodbye')
+
+        # Turn the message text into a MIMEText object and add it to the MIMEMultipart message
+        message.attach(MIMEText(text, 'plain'))
+        server.sendmail(SENDER_EMAIL, SECRETARY_EMAIL, message.as_string())
 
 
 def save_voters():
@@ -268,11 +307,12 @@ async def stand(context, *input):
             output_str = (f'Congratulations {members[registered_members[author]]}, '
                           f'you are now standing for the position of {post}.\n\n'
                           'Now you\'ll need to prepare a 2 minute speech to be given in the election call.\n'
-                          f'If you have any questions please contact the secretary ({SECRETARY_DETAILS}), or someone '
-                          'else on the committee.\n'
+                          f'If you have any questions please contact the secretary {SECRETARY_NAME}'
+                          f'({SECRETARY_EMAIL}), or someone else on the committee.\n'
                           'If you can\'t make it to the actual election call, you must get in touch with the secretary '
                           'ASAP to sort out alternative arrangements.')
             print(registered_members[author], 'is now standing for', post)
+            email_secretary(members[registered_members[author]], post)
     else:
         output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
         print(context.author.name, 'has failed to stand for', post)
@@ -304,6 +344,7 @@ async def standdown(context, *post):
         await context.send('Looks like you weren\'t standing for this post')
         return
 
+    email_secretary(str(standing[post][registered_members[author]][0]), post, stood_down=True)
     del standing[post][registered_members[author]]
 
     save_standing()

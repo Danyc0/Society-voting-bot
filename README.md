@@ -17,7 +17,12 @@ You'll need to set seven environment variables:
 * VOTERS_FILE -> The file that the registered voter list is backed up to.
 * STANDING_FILE -> The file that the standing candidates list is backed up to.
 * SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
-* SECRETARY_DETAILS -> The name and contact details of the secretary. This is needed in case a candidate cannot make the live election call.
+* SECRETARY_NAME -> The name of the current secretary.
+* SECRETARY_EMAIL -> The email address of the secretary. This is needed in case a candidate cannot make the live election call, and to notify the secretary of new candidates.
+* SMTP_SERVER -> The SMTP server to use when sending emails.
+* SMTP_PORT -> The SMTP port to use when sending emails.
+* SENDER_EMAIL -> The email from which to send emails.
+* SENDER_PASSWORD -> The password for the SENDER_EMAIL. If using gmail you'll need to enable insecure apps and set up an app-specific password.
 
 You can put these in a .env file in the repo directory as it uses dotenv (see [here](https://pypi.org/project/python-dotenv/) for usage) so you don't have to keep them in your environment.
 
