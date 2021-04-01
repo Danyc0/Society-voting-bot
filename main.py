@@ -371,10 +371,13 @@ async def posts(context):
     if not is_dm(context.channel) and not is_voting_channel(context.channel):
         return
 
-    output_str = '```'
-    for post in standing:
-        output_str += post + '\n'
-    output_str += '```'
+    if standing:
+        output_str = '```'
+        for post in standing:
+            output_str += post + '\n'
+        output_str += '```'
+    else:
+        output_str = 'There are currently no posts set up in this election'
     await context.send(output_str)
 
 
@@ -440,7 +443,8 @@ async def setup(context, *post):
 
     save_standing()
 
-    await context.send(f'{post} post created')
+    print(f'The post of {post} has been created')
+    await context.send(f'The post of {post} has been created')
 
 
 @bot.command(name='begin', help='Begins the election for the specified post')
