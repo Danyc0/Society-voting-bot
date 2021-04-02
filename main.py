@@ -286,6 +286,10 @@ async def stand(context, *input):
     if not is_dm(context.channel):
         await context.send('You need to DM me for this instead')
         return
+    if not input:
+        await context.send('Must supply the post you are running for and a valid email address, '
+                           f'usage:`{PREFIX}stand <POST> <EMAIL>`')
+        return
     email = input[-1]
     post = ' '.join(input[:-1])
     if not post:
