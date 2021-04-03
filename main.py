@@ -494,7 +494,6 @@ async def begin(context, *post):
             message = await user.send(f' - {str(details[0])}')
             # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
             voting_messages[user.id].append((student_id, message.id))
-        await user.send(f'End of Ballot Paper for {post}')
 
     await context.send(f'Voting has now begun for {post}\n'
                        'All registered voters will have just received a message from me. '
