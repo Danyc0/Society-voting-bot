@@ -159,13 +159,13 @@ def email_secretary(candidate, post, stood_down=False):
         message['To'] = SECRETARY_EMAIL
 
         if not stood_down:
-            message['Subject'] = 'TEST - New candidate standing in the upcoming CSS election'
+            message['Subject'] = 'New candidate standing in the upcoming CSS election'
             text = ('Hello,\n'
                     f'{candidate} has just stood for the position of {post} '
                     'in the upcoming CSS election,\n'
                     'Goodbye')
         else:
-            message['Subject'] = 'TEST - Candidate no longer standing in the upcoming CSS election'
+            message['Subject'] = 'Candidate no longer standing in the upcoming CSS election'
             text = ('Hello,\n'
                     f'{candidate} has just stood down from standing for the position of {post} '
                     'in the upcoming CSS election,\n'
