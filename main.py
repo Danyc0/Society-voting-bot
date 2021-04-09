@@ -322,7 +322,8 @@ async def stand(context, *input):
         else:
             standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email)
             output_str = (f'Congratulations {members[registered_members[author]]}, '
-                          f'you are now standing for the position of {post}.\n\n'
+                          f'you are now standing for the position of {post}. If you no longer wish to stand, you can '
+                          f'send `{PREFIX}standdown {post}`\n\n'
                           'Now you\'ll need to prepare a 2 minute speech to be given in the election call.\n'
                           f'If you have any questions please contact the secretary {SECRETARY_NAME}'
                           f'({SECRETARY_EMAIL}), or someone else on the committee.\n'
