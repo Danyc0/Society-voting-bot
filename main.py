@@ -389,7 +389,7 @@ async def posts(context):
 @bot.command(name='candidates',
              help='Prints the candidates for the specified post (or all posts if no post is given)')
 async def list_candidates(context, *post):
-    if not is_voting_channel(context.channel):
+    if not is_dm(context.channel) and not is_voting_channel(context.channel):
         return
     if not standing:
         await context.send('There are currently no posts set up in this election')
