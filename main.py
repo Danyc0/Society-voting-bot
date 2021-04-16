@@ -275,7 +275,7 @@ async def register(context, student_number: int):
             print(registered_members[author], 'is now registered')
     else:
         output_str = 'Looks like you\'re not a member yet, please become a member here: https://cssbham.com/join'
-        print(context.author.name, 'has failed to register')
+        print(context.author.name, 'has failed to register because they are not a member')
 
     save_voters()
     await context.send(output_str)
