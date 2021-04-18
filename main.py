@@ -452,6 +452,24 @@ async def setup(context, *post):
     await context.send(f'The post of {post} has been created')
 
 
+@bot.command(name='rename', help='Renames the specified post. Note that both post names MUST be passed within quotes')
+async def rename(context, old_post, new_post):
+    if not is_committee_channel(context.channel):
+        return
+
+    matching_posts = match_post(old_post)
+    if not matching_posts:
+        await context.send(f'{old_post} doesn\'t exist')
+        return
+
+    standing[new_post] = standing.pop(matching_posts[0])
+
+    save_standing()
+
+    print(f'The post of {matching_posts[0]} has been renamed to {new_post}')
+    await context.send(f'The post of {matching_posts[0]} has been renamed to {new_post}')
+
+
 @bot.command(name='begin', help='Begins the election for the specified post')
 async def begin(context, *post):
     global current_live_post
