@@ -18,6 +18,7 @@ You'll need to set seven environment variables:
 
 * VOTERS_FILE -> The file that the registered voter list is backed up to.
 * STANDING_FILE -> The file that the standing candidates list is backed up to.
+* REFERENDA_FILE -> The file that the list of referenda is backed up to.
 
 * SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
 
