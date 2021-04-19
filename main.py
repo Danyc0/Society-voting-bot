@@ -24,7 +24,10 @@ from discord.channel import DMChannel
 # Workflow
 # See current members:   \members
 # Setup the post:        \setup <POST NAME>
+# Rename a post:         \rename <OLD NAME (in quotes)> <NEW NAME>
+# Setup the referendum:  \referendum <TITLE (in quotes)> <DESCRIPTION>
 # Check the setup:       \posts
+# Check the referenda:   \referenda
 # Members register:      \register
 # Members stand:         \stand <POST NAME>
 # List candidates:       \candidates <POST NAME>
@@ -46,6 +49,7 @@ COOKIE = os.getenv('GUILD_COOKIE')
 
 VOTERS_FILE = os.getenv('VOTERS_FILE')
 STANDING_FILE = os.getenv('STANDING_FILE')
+REFERENDA_FILE = os.getenv('REFERENDA_FILE')
 
 SHEET_ID = os.getenv('SHEET_ID')
 
@@ -101,7 +105,7 @@ EMOJI_LOOKUP = {
 # Create the bot and specify to only look for messages starting with the PREFIX
 bot = commands.Bot(command_prefix=PREFIX)
 
-# Name of the post that is currently live
+# Name of the post that is currently live. Format = (<'POST'/'REFERENDUM'>, <Post Name/Referendum Title>)
 current_live_post = None
 # Format = [<Ballot>]
 votes = []
@@ -111,6 +115,12 @@ voted = []
 registered_members = {}
 # Format = {<Post>: {<Student Number>: (<Candidate Object>, <Email>), ...}, ...}
 standing = {}
+
+# Format = {<Title>: <Description>, ...}
+referenda = {}
+referendum_options = [Candidate('For'), Candidate('Against')]
+
+
 # Format = {<User ID>: [(<Candidate Student ID>, <Message ID>), ...], ...}
 voting_messages = {}
 
@@ -125,6 +135,11 @@ try:
         standing = pickle.load(in_file)
 except IOError:
     print('No standing file:', STANDING_FILE)
+try:
+    with open(REFERENDA_FILE, 'rb') as in_file:
+        referenda = pickle.load(in_file)
+except IOError:
+    print('No referenda file:', REFERENDA_FILE)
 
 # Read in the Google Sheets API token
 creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
@@ -200,6 +215,11 @@ def save_standing():
                                            valueInputOption='RAW', body=body).execute()
 
 
+def save_referenda():
+    with open(REFERENDA_FILE, 'wb') as out_file:
+        pickle.dump(referenda, out_file)
+
+
 def is_dm(channel):
     return isinstance(channel, DMChannel)
 
@@ -218,6 +238,10 @@ def is_committee_member(user):
 
 def match_post(post):
     return [a for a in standing if a.lower() == post.lower()]
+
+
+def match_referendum(referendum):
+    return [a for a in referenda if a.lower() == referendum.lower()]
 
 
 @bot.event
@@ -307,9 +331,10 @@ async def stand(context, *input):
                            f'use `{PREFIX}posts` to see the posts up for election')
         return
     post = matching_posts[0]
-    if post == current_live_post:
-        await context.send(f'I\'m afraid voting for {post} has already begun, you cannot stand for this post')
-        return
+    if current_live_post:
+        if post == current_live_post[1]:
+            await context.send(f'I\'m afraid voting for {post} has already begun, you cannot stand for this post')
+            return
 
     author = context.author.id
     members = get_members()
@@ -383,6 +408,21 @@ async def posts(context):
         output_str += '```'
     else:
         output_str = 'There are currently no posts set up in this election'
+    await context.send(output_str)
+
+
+@bot.command(name='referenda', help='Prints the referenda to be voted on in this election')
+async def list_referenda(context):
+    if not is_dm(context.channel) and not is_voting_channel(context.channel):
+        return
+
+    if referenda:
+        output_str = '```\n'
+        for title, description in referenda.items():
+            output_str += f'{title}: {description}\n'
+        output_str += '```'
+    else:
+        output_str = 'There are currently no referenda set up in this election'
     await context.send(output_str)
 
 
@@ -470,7 +510,29 @@ async def rename(context, old_post, new_post):
     await context.send(f'The post of {matching_posts[0]} has been renamed to {new_post}')
 
 
-@bot.command(name='begin', help='Begins the election for the specified post')
+@bot.command(name='referendum', help='Creates the specified referendum')
+async def referendum(context, title, *description):
+    if not is_committee_channel(context.channel):
+        return
+
+    description = ' '.join(description)
+    if description.startswith('\''):
+        description = description.strip('\'')
+
+    matching_referenda = match_referendum(title)
+    if matching_referenda:
+        await context.send(f'{title} already exists')
+        return
+
+    referenda[title] = description
+
+    save_referenda()
+
+    print(f'The referendum for \"{title}\" has been created')
+    await context.send(f'The referendum for \"{title}\" has been created')
+
+
+@bot.command(name='begin', help='Begins the election for the specified post/referendum')
 async def begin(context, *post):
     global current_live_post
 
@@ -481,44 +543,69 @@ async def begin(context, *post):
 
     post = ' '.join(post)
     if not post:
-        await context.send(f'Must supply the post you are starting the vote for, usage:`{PREFIX}begin <post>`')
+        await context.send('Must supply the post/referendum you are starting the vote for, usage:'
+                           f'`{PREFIX}begin <post/referendum>`')
         return
     if current_live_post:
         await context.send('You can\'t start a new vote until the last one has finished')
         return
     matching_posts = match_post(post)
+    type = 'POST'
     if not matching_posts:
-        await context.send('Looks like that post isn\'t available for this election, '
-                           f'use `{PREFIX}posts` to see the posts up for election`')
-        return
+        matching_posts = match_referendum(post)
+        type = 'REFERENDUM'
+        if not matching_posts:
+            await context.send('Looks like that post/referendum isn\'t available for this election, '
+                               f'use `{PREFIX}posts` to see the posts up for election or '
+                               f'or use `{PREFIX}referenda` to see the referenda that will be voted upon')
+            return
     post = matching_posts[0]
 
-    current_live_post = post
-    print('Voting has now begun for post:', post)
+    current_live_post = (type, post)
+    print('Voting has now begun for:', post)
 
-    num_candidates = len(standing[post])
-    max_react = list(EMOJI_LOOKUP)[num_candidates-1]
+    if type == 'POST':
+        num_candidates = len(standing[post])
+        max_react = list(EMOJI_LOOKUP)[num_candidates-1]
 
-    for voter in registered_members:
-        user = await bot.fetch_user(voter)
-        await user.send(f'Ballot paper for {post}, there are {num_candidates} candidates. '
-                        f'(Please react to the messages below with :one:-{max_react}). '
-                        f'**Don\'t forget to **`{PREFIX}submit <CODE>`** when you\'re done**:\n')
+        for voter in registered_members:
+            user = await bot.fetch_user(voter)
+            await user.send(f'Ballot paper for: {post}, there are {num_candidates} candidates. '
+                            f'(Please react to the messages below with :one:-{max_react}). '
+                            f'**Don\'t forget to **`{PREFIX}submit <CODE>`** when you\'re done**:\n')
 
-        # Message the member with the shuffled candidate list, each in a separate message, record the ID of the message
-        candidates = list(standing[post].items())
-        random.shuffle(candidates)
-        voting_messages[user.id] = []
-        for student_id, details in candidates:
-            message = await user.send(f' - {str(details[0])}')
-            # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
-            voting_messages[user.id].append((student_id, message.id))
+            # Message the member with the shuffled candidate list, each in a separate message, record the message ID
+            candidates = list(standing[post].items())
+            random.shuffle(candidates)
+            voting_messages[user.id] = []
+            for student_id, details in candidates:
+                message = await user.send(f' - {str(details[0])}')
+                # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
+                voting_messages[user.id].append((student_id, message.id))
 
-    await context.send(f'Voting has now begun for {post}\n'
-                       'All registered voters will have just received a message from me. '
-                       'Please vote by reacting to the candidates listed in your DMs where '
-                       ':one: is your top candidate, :two: is your second top candidate, etc. '
-                       'You do not need to put a ranking in for every candidate')
+        await context.send(f'Voting has now begun for: {post}\n'
+                           'All registered voters will have just received a message from me. '
+                           'Please vote by reacting to the candidates listed in your DMs where '
+                           ':one: is your top candidate, :two: is your second top candidate, etc. '
+                           'You do not need to put a ranking in for every candidate')
+    else:
+        for voter in registered_members:
+            user = await bot.fetch_user(voter)
+            await user.send(f'Ballot paper for: {post}. Please react to the message for your choice below with '
+                            ':ballot_box_with_check: (\\:ballot_box_with_check\\:). '
+                            f'**Don\'t forget to **`{PREFIX}submit <CODE>`** when you\'re done**:\n')
+
+            # Message the member with the options list, each in a separate message, record the ID of the message
+            voting_messages[user.id] = []
+            for option in referendum_options:
+                message = await user.send(f' - {str(option)}')
+                # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
+                voting_messages[user.id].append((option, message.id))
+
+        await context.send(f'Voting has now begun for: {post}\n'
+                           'All registered voters will have just received a message from me. Please vote by '
+                           'reacting :ballot_box_with_check: to either the \'For\' or \'Against\' message '
+                           'in your DMs')
 
 
 @bot.command(name='validate', help='Checks to see if your vote will be accepted')
@@ -531,6 +618,13 @@ async def validate(context):
         return False
 
     await context.send('Checking vote validity ...')
+    if current_live_post[0] == 'POST':
+        return await validate_post(context, author)
+    else:
+        return await validate_referendum(context, author)
+
+
+async def validate_post(context, author):
     valid = True
     all_reactions = []
     output_str = ''
@@ -559,7 +653,7 @@ async def validate(context):
     # Check if they try to do :three: before :two:, etc
     if len(all_reactions) != 0:
         max_value = EMOJI_LOOKUP[max(all_reactions, key=lambda x: EMOJI_LOOKUP[x])]
-        if max_value >= len(standing[current_live_post]):
+        if max_value >= len(standing[current_live_post[1]]):
             output_str += 'You\'ve given a ranking that is higher than the number of candidates\n'
             valid = False
         else:
@@ -568,6 +662,32 @@ async def validate(context):
                 if react_to_check not in all_reactions:
                     output_str += f'Looks like you\'ve skipped ranking {react_to_check}\n'
                     valid = False
+
+    if not output_str:
+        output_str = 'Your vote was valid'
+    await context.send(output_str)
+    return valid
+
+
+async def validate_referendum(context, author):
+    valid = True
+    all_reactions = []
+    output_str = ''
+    for candidate, message_id in voting_messages[author]:
+        message = await context.author.fetch_message(message_id)
+
+        for reaction in message.reactions:
+            # Check if react is not valid
+            if reaction.emoji != '☑️':
+                output_str += (f'You have reacted with an invalid emoji: {reaction.emoji}, '
+                               'you need to use :ballot_box_with_check:\n')
+                valid = False
+            else:
+                all_reactions.append(reaction.emoji)
+
+    if len(all_reactions) > 1:
+        output_str += 'You can\'t react with more than one emoji\n'
+        valid = False
 
     if not output_str:
         output_str = 'Your vote was valid'
@@ -601,16 +721,27 @@ async def submit(context, code=None):
         await context.send('Your vote was not cast, please correct your ballot and resubmit')
         return
 
-    ballot_list = [''] * len(standing[current_live_post])
+    if current_live_post[0] == 'POST':
+        ballot_list = [''] * len(standing[current_live_post[1]])
 
-    # Create ballot
-    for candidate, message_id in voting_messages[author]:
-        message = await context.author.fetch_message(message_id)
-        if message.reactions:
-            reaction = message.reactions[0].emoji
-            ballot_list[EMOJI_LOOKUP[reaction]] = standing[current_live_post][candidate][0]
+        # Create ballot
+        for candidate, message_id in voting_messages[author]:
+            message = await context.author.fetch_message(message_id)
+            if message.reactions:
+                reaction = message.reactions[0].emoji
+                ballot_list[EMOJI_LOOKUP[reaction]] = standing[current_live_post[1]][candidate][0]
 
-    votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
+        votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
+    else:
+        # Create ballot
+        for option, message_id in voting_messages[author]:
+            message = await context.author.fetch_message(message_id)
+            if message.reactions:
+                votes.append(Ballot(ranked_candidates=[option]))
+                break
+        else:
+            votes.append(Ballot(ranked_candidates=[]))
+
     voted.append(author)
     await context.send('Your vote was successfully cast')
     print('Votes cast:', len(votes), '- Votes not yet cast:', len(registered_members)-len(votes))
@@ -630,12 +761,17 @@ async def end(context):
     voting_messages.clear()
     voted.clear()
 
-    print('Voting has now ended for post:', last_live_post)
+    print('Voting has now ended for:', last_live_post[1])
     for voter in registered_members:
         user = await bot.fetch_user(voter)
-        await user.send(f'Voting has now ended for post: {last_live_post}')
+        await user.send(f'Voting has now ended for: {last_live_post[1]}')
 
-    results = pyrankvote.instant_runoff_voting([candidate for candidate, _ in standing[last_live_post].values()], votes)
+    if last_live_post[0] == 'POST':
+        results = pyrankvote.instant_runoff_voting([candidate for candidate, _ in standing[last_live_post[1]].values()],
+                                                   votes)
+    else:
+        results = pyrankvote.instant_runoff_voting(referendum_options, votes)
+
     votes.clear()
 
     # Announce the scores and the winner to the committee
@@ -644,9 +780,14 @@ async def end(context):
     print('Result:', results)
     print('Winner:', winner)
 
-    await committee_channel.send('The votes were tallied as follows:\n'
-                                 f'```{results}```\n'
-                                 f'The winning candidate for the post of {last_live_post} is: {winner}')
+    if last_live_post[0] == 'POST':
+        await committee_channel.send('The votes were tallied as follows:\n'
+                                     f'```{results}```\n'
+                                     f'The winning candidate for the post of {last_live_post[1]} is: {winner}')
+    else:
+        await committee_channel.send('The votes were tallied as follows:\n'
+                                     f'```{results}```\n'
+                                     f'The result for the referendum on {last_live_post[1]} is: {winner}')
 
 
 bot.run(TOKEN)
