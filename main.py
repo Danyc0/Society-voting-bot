@@ -50,6 +50,7 @@ COOKIE = os.getenv('GUILD_COOKIE')
 VOTERS_FILE = os.getenv('VOTERS_FILE')
 STANDING_FILE = os.getenv('STANDING_FILE')
 REFERENDA_FILE = os.getenv('REFERENDA_FILE')
+NAMES_FILE = os.getenv('NAMES_FILE')
 
 SHEET_ID = os.getenv('SHEET_ID')
 
@@ -115,10 +116,11 @@ voted = []
 registered_members = {}
 # Format = {<Post>: {<Student Number>: (<Candidate Object>, <Email>), ...}, ...}
 standing = {}
-
 # Format = {<Title>: <Description>, ...}
 referenda = {}
 referendum_options = [Candidate('For'), Candidate('Against')]
+# Format = {<Student Number>: <Preferred Name>, ...}
+preferred_names = {}
 
 
 # Format = {<User ID>: [(<Candidate Student ID>, <Message ID>), ...], ...}
@@ -140,6 +142,11 @@ try:
         referenda = pickle.load(in_file)
 except IOError:
     print('No referenda file:', REFERENDA_FILE)
+try:
+    with open(NAMES_FILE, 'rb') as in_file:
+        preferred_names = pickle.load(in_file)
+except IOError:
+    print('No preferred_names file:', NAMES_FILE)
 
 # Read in the Google Sheets API token
 creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
@@ -161,6 +168,11 @@ def get_members():
     # Format = {<Student Number>: <Name>}
     members = {**all_members, **standard_membership}
     members[0] = 'RON (Re-Open-Nominations)'
+
+    # Substitute preferred names
+    for id in preferred_names:
+        members[id] = preferred_names[id]
+
     return members
 
 
@@ -194,6 +206,11 @@ def email_secretary(candidate, post, stood_down=False):
 def save_voters():
     with open(VOTERS_FILE, 'wb') as out_file:
         pickle.dump(registered_members, out_file)
+
+
+def save_names():
+    with open(NAMES_FILE, 'wb') as out_file:
+        pickle.dump(preferred_names, out_file)
 
 
 def save_standing():
@@ -394,6 +411,74 @@ async def standdown(context, *post):
 
     print(registered_members[author], 'has stood down from standing for', post)
     await context.send(f'You have stood down from running for {post}')
+
+
+@bot.command(name='changename', help='Change your name as used by the bot')
+async def changename(context, *name):
+    if not is_dm(context.channel):
+        await context.send('You need to DM me for this instead')
+        return
+
+    name = ' '.join(name)
+    if not name:
+        await context.send(f'Must supply the name you are wanting to change to, usage: `{PREFIX}changename <name>`')
+        return
+    if name.startswith('\''):
+        name = name.strip('\'')
+
+    if current_live_post:
+        await context.send(f'I\'m afraid you can\'t change your name whilst a vote is ongoing, please wait until the vote has finished')
+        return
+
+
+    author = context.author.id
+    if author not in registered_members:
+        await context.send('It looks like you\'re not registered yet, you must first register using '
+                           f'`{PREFIX}register <STUDENT NUMBER>` before you can update your name')
+        return
+
+    author_id = registered_members[author]
+    preferred_names[author_id] = name
+
+    for post in standing:
+        if author_id in standing[post]:
+            standing[post][author_id] = (Candidate(name), standing[post][author_id][1])
+    save_names()
+    save_standing()
+
+    await context.send(f'The bot now recognises your name to be {name}')
+    print(f'{context.author.name}({author_id}) has changed their name to {name}')
+
+
+@bot.command(name='resetname', help='Resets the name of the person with the specified student ID')
+async def setup(context, student_id: int):
+    if not is_committee_channel(context.channel):
+        return
+
+    if not student_id:
+        await context.send(f'You must supply a student ID. Usage: `{PREFIX}resetname <STUDENT ID>`')
+        return
+
+    if current_live_post:
+        await context.send(f'I\'m afraid you can\'t reset a name whilst a vote is ongoing, please wait until the vote has finished, or end it early using `{PREFIX}end`')
+        return
+
+    if student_id not in preferred_names:
+        await context.send(f'The supplied student ID has not updated their name')
+        return
+
+    del preferred_names[student_id]
+
+    guild_name = get_members()[student_id]
+
+    for post in standing:
+        if student_id in standing[post]:
+            standing[post][student_id] = (Candidate(guild_name), standing[post][student_id][1])
+    save_names()
+    save_standing()
+
+    print(f'The name used for {student_id} has been reset')
+    await context.send(f'The name used for {student_id} has been reset')
 
 
 @bot.command(name='posts', help='Prints the posts available to stand for in this election')
