@@ -1,5 +1,6 @@
 import os
 import time
+import datetime
 import random
 import requests
 import re
@@ -36,39 +37,12 @@ from discord.channel import DMChannel
 # Voters submit:         \submit
 # Voting ends + results: \end
 
-random.seed(time.time())
-
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
-VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
-
-URL = os.getenv('GUILD_URL')
-# This should be extracted from your .ASPXAUTH cookie
-COOKIE = os.getenv('GUILD_COOKIE')
-
-VOTERS_FILE = os.getenv('VOTERS_FILE')
-STANDING_FILE = os.getenv('STANDING_FILE')
-REFERENDA_FILE = os.getenv('REFERENDA_FILE')
-NAMES_FILE = os.getenv('NAMES_FILE')
-
-SHEET_ID = os.getenv('SHEET_ID')
-
-SECRETARY_NAME = os.getenv('SECRETARY_NAME')
-SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
-
-SMTP_SERVER = os.getenv('SMTP_SERVER')
-SMTP_PORT = int(os.getenv('SMTP_PORT'))
-SENDER_EMAIL = os.getenv('SENDER_EMAIL')
-SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
-
-VOTING_CODE = os.getenv('VOTING_CODE').upper()
-
-
-GOOGLE_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 # Set the command prefix to be '\'
 PREFIX = '\\'
+
+# Create the bot and specify to only look for messages starting with the PREFIX
+bot = commands.Bot(command_prefix=PREFIX)
 
 RULES_STRING = (
                 f'To stand for a position, DM me with `{PREFIX}stand <POST> <EMAIL>`, where <POST> is the post you '
@@ -102,9 +76,8 @@ EMOJI_LOOKUP = {
     '9️⃣': 8,
 }
 
+GOOGLE_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
-# Create the bot and specify to only look for messages starting with the PREFIX
-bot = commands.Bot(command_prefix=PREFIX)
 
 # Name of the post that is currently live. Format = (<'POST'/'REFERENDUM'>, <Post Name/Referendum Title>)
 current_live_post = None
@@ -126,32 +99,9 @@ preferred_names = {}
 # Format = {<User ID>: [(<Candidate Student ID>, <Message ID>), ...], ...}
 voting_messages = {}
 
-# Populate registered_members and standing from backups
-try:
-    with open(VOTERS_FILE, 'rb') as in_file:
-        registered_members = pickle.load(in_file)
-except IOError:
-    print('No registered_members file:', VOTERS_FILE)
-try:
-    with open(STANDING_FILE, 'rb') as in_file:
-        standing = pickle.load(in_file)
-except IOError:
-    print('No standing file:', STANDING_FILE)
-try:
-    with open(REFERENDA_FILE, 'rb') as in_file:
-        referenda = pickle.load(in_file)
-except IOError:
-    print('No referenda file:', REFERENDA_FILE)
-try:
-    with open(NAMES_FILE, 'rb') as in_file:
-        preferred_names = pickle.load(in_file)
-except IOError:
-    print('No preferred_names file:', NAMES_FILE)
 
-# Read in the Google Sheets API token
-creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
-# Connect to the sheets API
-service = build('sheets', 'v4', credentials=creds)
+def log(output_str):
+    print(datetime.datetime.now().strftime('%d/%m/%y %H:%M:%S: ') + output_str)
 
 
 def get_members():
@@ -308,15 +258,15 @@ async def register(context, student_number: int):
                           'please contact a committee member')
             other_user_id = [key for key, value in registered_members.items() if value == student_number][0]
             other_user = await bot.fetch_user(other_user_id).name
-            print(context.author, 'tried to register student ID', student_number,
-                  'but it is already registered to', other_user)
+            log(f'{context.author} tried to register student ID {student_number}, '
+                f'but it\'s already registered to {other_user}')
         else:
             registered_members[author] = student_number
             output_str = f'Thank you {members[registered_members[author]]}, you are now registered\n\n{RULES_STRING}'
-            print(registered_members[author], 'is now registered')
+            log(f'{registered_members[author]} is now registered')
     else:
         output_str = 'Looks like you\'re not a member yet, please become a member here: https://cssbham.com/join'
-        print(context.author.name, 'has failed to register because they are not a member')
+        log(f'{context.author.name} has failed to register because they are not a member')
 
     save_voters()
     await context.send(output_str)
@@ -371,11 +321,11 @@ async def stand(context, *input):
                           f'({SECRETARY_EMAIL}), or someone else on the committee.\n'
                           'If you can\'t make it to the actual election call, you must get in touch with the secretary '
                           'ASAP to sort out alternative arrangements.')
-            print(registered_members[author], 'is now standing for', post)
+            log(f'{registered_members[author]} is now standing for {post}')
             email_secretary(members[registered_members[author]], post)
     else:
         output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
-        print(context.author.name, 'has failed to stand for', post)
+        log(f'{context.author.name} has failed to stand for {post} because they are not registered')
 
     save_standing()
     await context.send(output_str)
@@ -409,7 +359,7 @@ async def standdown(context, *post):
 
     save_standing()
 
-    print(registered_members[author], 'has stood down from standing for', post)
+    log(f'{registered_members[author]} has stood down from standing for {post}')
     await context.send(f'You have stood down from running for {post}')
 
 
@@ -427,9 +377,9 @@ async def changename(context, *name):
         name = name.strip('\'')
 
     if current_live_post:
-        await context.send(f'I\'m afraid you can\'t change your name whilst a vote is ongoing, please wait until the vote has finished')
+        await context.send('I\'m afraid you can\'t change your name whilst a vote is ongoing, '
+                           'please wait until the vote has finished')
         return
-
 
     author = context.author.id
     if author not in registered_members:
@@ -447,11 +397,11 @@ async def changename(context, *name):
     save_standing()
 
     await context.send(f'The bot now recognises your name to be {name}')
-    print(f'{context.author.name}({author_id}) has changed their name to {name}')
+    log(f'{context.author.name}({author_id}) has changed their name to {name}')
 
 
 @bot.command(name='resetname', help='Resets the name of the person with the specified student ID')
-async def setup(context, student_id: int):
+async def resetname(context, student_id: int):
     if not is_committee_channel(context.channel):
         return
 
@@ -460,11 +410,12 @@ async def setup(context, student_id: int):
         return
 
     if current_live_post:
-        await context.send(f'I\'m afraid you can\'t reset a name whilst a vote is ongoing, please wait until the vote has finished, or end it early using `{PREFIX}end`')
+        await context.send('I\'m afraid you can\'t reset a name whilst a vote is ongoing, '
+                           f'please wait until the vote has finished, or end it early using `{PREFIX}end`')
         return
 
     if student_id not in preferred_names:
-        await context.send(f'The supplied student ID has not updated their name')
+        await context.send('The supplied student ID has not updated their name')
         return
 
     del preferred_names[student_id]
@@ -477,7 +428,7 @@ async def setup(context, student_id: int):
     save_names()
     save_standing()
 
-    print(f'The name used for {student_id} has been reset')
+    log(f'The name used for {student_id} has been reset')
     await context.send(f'The name used for {student_id} has been reset')
 
 
@@ -573,7 +524,7 @@ async def setup(context, *post):
 
     save_standing()
 
-    print(f'The post of {post} has been created')
+    log(f'The post of {post} has been created')
     await context.send(f'The post of {post} has been created')
 
 
@@ -591,7 +542,7 @@ async def rename(context, old_post, new_post):
 
     save_standing()
 
-    print(f'The post of {matching_posts[0]} has been renamed to {new_post}')
+    log(f'The post of {matching_posts[0]} has been renamed to {new_post}')
     await context.send(f'The post of {matching_posts[0]} has been renamed to {new_post}')
 
 
@@ -613,7 +564,7 @@ async def referendum(context, title, *description):
 
     save_referenda()
 
-    print(f'The referendum for \"{title}\" has been created')
+    log(f'The referendum for \"{title}\" has been created')
     await context.send(f'The referendum for \"{title}\" has been created')
 
 
@@ -647,7 +598,7 @@ async def begin(context, *post):
     post = matching_posts[0]
 
     current_live_post = (type, post)
-    print('Voting has now begun for:', post)
+    log(f'Voting has now begun for: {post}')
 
     if type == 'POST':
         num_candidates = len(standing[post])
@@ -829,7 +780,7 @@ async def submit(context, code=None):
 
     voted.append(author)
     await context.send('Your vote was successfully cast')
-    print('Votes cast:', len(votes), '- Votes not yet cast:', len(registered_members)-len(votes))
+    log(f'Votes cast: {len(votes)} - Votes not yet cast: {len(registered_members)-len(votes)}')
 
 
 @bot.command(name='end', help='Ends the election for the currently live post')
@@ -859,8 +810,8 @@ async def end(context):
     # Announce the scores and the winner to the committee
     winner = results.get_winners()[0]
 
-    print('Result:', results)
-    print('Winner:', winner)
+    log(f'Result: {results}')
+    log(f'Winner: {winner}')
 
     if last_live_post[0] == 'POST':
         await committee_channel.send('The votes were tallied as follows:\n'
@@ -871,10 +822,66 @@ async def end(context):
                                      f'```{results}```\n'
                                      f'The result for the referendum on {last_live_post[1]} is: {winner}')
 
-    print('Voting has now ended for:', last_live_post[1])
+    log(f'Voting has now ended for: {last_live_post[1]}')
     for voter in registered_members:
         user = await bot.fetch_user(voter)
         await user.send(f'Voting has now ended for: {last_live_post[1]}')
 
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    random.seed(time.time())
+
+    load_dotenv()
+    TOKEN = os.getenv('DISCORD_TOKEN')
+    COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
+    VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
+
+    URL = os.getenv('GUILD_URL')
+    # This should be extracted from your .ASPXAUTH cookie
+    COOKIE = os.getenv('GUILD_COOKIE')
+
+    VOTERS_FILE = os.getenv('VOTERS_FILE')
+    STANDING_FILE = os.getenv('STANDING_FILE')
+    REFERENDA_FILE = os.getenv('REFERENDA_FILE')
+    NAMES_FILE = os.getenv('NAMES_FILE')
+
+    SHEET_ID = os.getenv('SHEET_ID')
+
+    SECRETARY_NAME = os.getenv('SECRETARY_NAME')
+    SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
+
+    SMTP_SERVER = os.getenv('SMTP_SERVER')
+    SMTP_PORT = int(os.getenv('SMTP_PORT'))
+    SENDER_EMAIL = os.getenv('SENDER_EMAIL')
+    SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
+
+    VOTING_CODE = os.getenv('VOTING_CODE').upper()
+
+    # Populate registered_members and standing from backups
+    try:
+        with open(VOTERS_FILE, 'rb') as in_file:
+            registered_members = pickle.load(in_file)
+    except IOError:
+        log(f'No registered_members file: {VOTERS_FILE}')
+    try:
+        with open(STANDING_FILE, 'rb') as in_file:
+            standing = pickle.load(in_file)
+    except IOError:
+        log(f'No standing file: {STANDING_FILE}')
+    try:
+        with open(REFERENDA_FILE, 'rb') as in_file:
+            referenda = pickle.load(in_file)
+    except IOError:
+        log(f'No referenda file: {REFERENDA_FILE}')
+    try:
+        with open(NAMES_FILE, 'rb') as in_file:
+            preferred_names = pickle.load(in_file)
+    except IOError:
+        log(f'No preferred_names file: {NAMES_FILE}')
+
+    # Read in the Google Sheets API token
+    creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
+    # Connect to the sheets API
+    service = build('sheets', 'v4', credentials=creds)
+
+    bot.run(TOKEN)
