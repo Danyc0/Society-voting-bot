@@ -846,10 +846,7 @@ async def end(context):
     voting_messages.clear()
     voted.clear()
 
-    print('Voting has now ended for:', last_live_post[1])
-    for voter in registered_members:
-        user = await bot.fetch_user(voter)
-        await user.send(f'Voting has now ended for: {last_live_post[1]}')
+    await voting_channel.send(f'Voting has now ended for: {last_live_post[1]}')
 
     if last_live_post[0] == 'POST':
         results = pyrankvote.instant_runoff_voting([candidate for candidate, _ in standing[last_live_post[1]].values()],
@@ -873,6 +870,11 @@ async def end(context):
         await committee_channel.send('The votes were tallied as follows:\n'
                                      f'```{results}```\n'
                                      f'The result for the referendum on {last_live_post[1]} is: {winner}')
+
+    print('Voting has now ended for:', last_live_post[1])
+    for voter in registered_members:
+        user = await bot.fetch_user(voter)
+        await user.send(f'Voting has now ended for: {last_live_post[1]}')
 
 
 bot.run(TOKEN)
