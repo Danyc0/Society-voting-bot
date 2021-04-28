@@ -7,6 +7,8 @@ import smtplib
 import ssl
 import asyncio
 
+import aiorwlock
+
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -82,20 +84,25 @@ GOOGLE_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
 # Name of the post that is currently live. Format = (<'POST'/'REFERENDUM'>, <Post Name/Referendum Title>)
 current_live_post = None
+
 # Format = [<Ballot>]
 votes = []
+
 # Format = [<Student Number>]
 voted = []
+
 # Format = {<Discord Username>: <Student Number>}
 registered_members = {}
+
 # Format = {<Post>: {<Student Number>: (<Candidate Object>, <Email>), ...}, ...}
 standing = {}
+
 # Format = {<Title>: <Description>, ...}
 referenda = {}
 referendum_options = [Candidate('For'), Candidate('Against')]
+
 # Format = {<Student Number>: <Preferred Name>, ...}
 preferred_names = {}
-
 
 # Format = {<User ID>: [(<Candidate Student ID>, <Message ID>), ...], ...}
 voting_messages = {}
@@ -208,6 +215,13 @@ async def on_ready():
     committee_channel = bot.get_channel(COMMITTEE_CHANNEL_ID)
     voting_channel = bot.get_channel(VOTING_CHANNEL_ID)
 
+    global current_live_post_lock
+    global votes_lock
+    global voted_lock
+    current_live_post_lock = aiorwlock.RWLock()
+    votes_lock = aiorwlock.RWLock()
+    voted_lock = asyncio.Lock()
+
     print(f'{bot.user.name} has connected to Discord and is in the following channels:')
     for guild in bot.guilds:
         print(' -', guild.name)
@@ -288,34 +302,35 @@ async def stand(context, *input):
                            f'use `{PREFIX}posts` to see the posts up for election')
         return
     post = matching_posts[0]
-    if current_live_post:
-        if post == current_live_post[1]:
-            await context.send(f'I\'m afraid voting for {post} has already begun, you cannot stand for this post')
-            return
+    async with current_live_post_lock.reader_lock:
+        if current_live_post:
+            if post == current_live_post[1]:
+                await context.send(f'I\'m afraid voting for {post} has already begun, you cannot stand for this post')
+                return
 
-    author = context.author.id
-    members = get_members()
+        author = context.author.id
+        members = get_members()
 
-    output_str = 'Error'
-    if author in registered_members:
-        if [i for i in standing[post] if i == registered_members[author]]:
-            output_str = (f'It looks like you, {members[registered_members[author]]} are already '
-                          f'standing for the position of: {post}')
+        output_str = 'Error'
+        if author in registered_members:
+            if [i for i in standing[post] if i == registered_members[author]]:
+                output_str = (f'It looks like you, {members[registered_members[author]]} are already '
+                              f'standing for the position of: {post}')
+            else:
+                standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email)
+                output_str = (f'Congratulations {members[registered_members[author]]}, '
+                              f'you are now standing for the position of {post}. If you no longer wish to stand, you can '
+                              f'send `{PREFIX}standdown {post}`\n\n'
+                              'Now you\'ll need to prepare a 2 minute speech to be given in the election call.\n'
+                              f'If you have any questions please contact the secretary {SECRETARY_NAME}'
+                              f'({SECRETARY_EMAIL}), or someone else on the committee.\n'
+                              'If you can\'t make it to the actual election call, you must get in touch with the secretary '
+                              'ASAP to sort out alternative arrangements.')
+                log(f'{context.author.name}({registered_members[author]}) is now standing for {post}')
+                email_secretary(members[registered_members[author]], post)
         else:
-            standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email)
-            output_str = (f'Congratulations {members[registered_members[author]]}, '
-                          f'you are now standing for the position of {post}. If you no longer wish to stand, you can '
-                          f'send `{PREFIX}standdown {post}`\n\n'
-                          'Now you\'ll need to prepare a 2 minute speech to be given in the election call.\n'
-                          f'If you have any questions please contact the secretary {SECRETARY_NAME}'
-                          f'({SECRETARY_EMAIL}), or someone else on the committee.\n'
-                          'If you can\'t make it to the actual election call, you must get in touch with the secretary '
-                          'ASAP to sort out alternative arrangements.')
-            log(f'{context.author.name}({registered_members[author]}) is now standing for {post}')
-            email_secretary(members[registered_members[author]], post)
-    else:
-        output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
-        log(f'{context.author.name} has failed to stand for {post} because they are not registered')
+            output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
+            log(f'{context.author.name} has failed to stand for {post} because they are not registered')
 
     save_standing()
     await context.send(output_str)
@@ -397,23 +412,24 @@ async def changename(context, *name):
     if name.startswith('\''):
         name = name.strip('\'')
 
-    if current_live_post:
-        await context.send('I\'m afraid you can\'t change your name whilst a vote is ongoing, '
-                           'please wait until the vote has finished')
-        return
-
     author = context.author.id
     if author not in registered_members:
         await context.send('It looks like you\'re not registered yet, you must first register using '
                            f'`{PREFIX}register <STUDENT NUMBER>` before you can update your name')
         return
 
-    author_id = registered_members[author]
-    preferred_names[author_id] = name
+    async with current_live_post_lock.reader_lock:
+        if current_live_post:
+            await context.send('I\'m afraid you can\'t change your name whilst a vote is ongoing, '
+                               'please wait until the vote has finished')
+            return
 
-    for post in standing:
-        if author_id in standing[post]:
-            standing[post][author_id] = (Candidate(name), standing[post][author_id][1])
+        author_id = registered_members[author]
+        preferred_names[author_id] = name
+
+        for post in standing:
+            if author_id in standing[post]:
+                standing[post][author_id] = (Candidate(name), standing[post][author_id][1])
     save_names()
     save_standing()
 
@@ -430,22 +446,23 @@ async def resetname(context, student_id: int):
         await context.send(f'You must supply a student ID. Usage: `{PREFIX}resetname <STUDENT ID>`')
         return
 
-    if current_live_post:
-        await context.send('I\'m afraid you can\'t reset a name whilst a vote is ongoing, '
-                           f'please wait until the vote has finished, or end it early using `{PREFIX}end`')
-        return
-
     if student_id not in preferred_names:
         await context.send('The supplied student ID has not updated their name')
         return
 
-    del preferred_names[student_id]
+    async with current_live_post_lock.reader_lock:
+        if current_live_post:
+            await context.send('I\'m afraid you can\'t reset a name whilst a vote is ongoing, '
+                               f'please wait until the vote has finished, or end it early using `{PREFIX}end`')
+            return
 
-    union_name = get_members()[student_id]
+        del preferred_names[student_id]
 
-    for post in standing:
-        if student_id in standing[post]:
-            standing[post][student_id] = (Candidate(union_name), standing[post][student_id][1])
+        union_name = get_members()[student_id]
+
+        for post in standing:
+            if student_id in standing[post]:
+                standing[post][student_id] = (Candidate(union_name), standing[post][student_id][1])
     save_names()
     save_standing()
 
@@ -603,9 +620,7 @@ async def begin(context, *post):
         await context.send('Must supply the post/referendum you are starting the vote for, usage:'
                            f'`{PREFIX}begin <post/referendum>`')
         return
-    if current_live_post:
-        await context.send('You can\'t start a new vote until the last one has finished')
-        return
+
     matching_posts = match_post(post)
     type = 'POST'
     if not matching_posts:
@@ -616,9 +631,14 @@ async def begin(context, *post):
                                f'use `{PREFIX}posts` to see the posts up for election or '
                                f'or use `{PREFIX}referenda` to see the referenda that will be voted upon')
             return
-    post = matching_posts[0]
 
-    current_live_post = (type, post)
+    async with current_live_post_lock.writer_lock:
+        if current_live_post:
+            await context.send('You can\'t start a new vote until the last one has finished')
+            return
+        post = matching_posts[0]
+
+        current_live_post = (type, post)
     log(f'Voting has now begun for: {post}')
 
     if type == 'POST':
@@ -679,10 +699,11 @@ async def validate(context):
         return False
 
     await context.send('Checking vote validity ...')
-    if current_live_post[0] == 'POST':
-        return await validate_post(context, author)
-    else:
-        return await validate_referendum(context, author)
+    async with current_live_post_lock.reader_lock:
+        if current_live_post[0] == 'POST':
+            return await validate_post(context, author)
+        else:
+            return await validate_referendum(context, author)
 
 
 async def validate_post(context, author):
@@ -765,9 +786,6 @@ async def submit(context, code=None):
     author = context.author.id
     if author not in voting_messages:
         return
-    if author in voted:
-        await context.send('You have already cast your vote and it cannot be changed')
-        return
     if not code:
         await context.send('You must supply the code given out in the election call, your vote was not cast')
         return
@@ -782,30 +800,37 @@ async def submit(context, code=None):
         await context.send('Your vote was not cast, please correct your ballot and resubmit')
         return
 
-    if current_live_post[0] == 'POST':
-        ballot_list = [''] * len(standing[current_live_post[1]])
+    async with voted_lock:
+        if author in voted:
+            await context.send('You have already cast your vote and it cannot be changed')
+            return
 
-        # Create ballot
-        for candidate, message_id in voting_messages[author]:
-            message = await context.author.fetch_message(message_id)
-            if message.reactions:
-                reaction = message.reactions[0].emoji
-                ballot_list[EMOJI_LOOKUP[reaction]] = standing[current_live_post[1]][candidate][0]
+        async with votes_lock.reader_lock:
+            async with current_live_post_lock.reader_lock:
+                if current_live_post[0] == 'POST':
+                    ballot_list = [''] * len(standing[current_live_post[1]])
 
-        votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
-    else:
-        # Create ballot
-        for option, message_id in voting_messages[author]:
-            message = await context.author.fetch_message(message_id)
-            if message.reactions:
-                votes.append(Ballot(ranked_candidates=[option]))
-                break
-        else:
-            votes.append(Ballot(ranked_candidates=[]))
+                    # Create ballot
+                    for candidate, message_id in voting_messages[author]:
+                        message = await context.author.fetch_message(message_id)
+                        if message.reactions:
+                            reaction = message.reactions[0].emoji
+                            ballot_list[EMOJI_LOOKUP[reaction]] = standing[current_live_post[1]][candidate][0]
 
-    voted.append(author)
-    await context.send('Your vote was successfully cast')
-    log(f'Votes cast: {len(votes)} - Votes not yet cast: {len(registered_members)-len(votes)}')
+                    votes.append(Ballot(ranked_candidates=[ballot for ballot in ballot_list if str(ballot) != '']))
+                else:
+                    # Create ballot
+                    for option, message_id in voting_messages[author]:
+                        message = await context.author.fetch_message(message_id)
+                        if message.reactions:
+                            votes.append(Ballot(ranked_candidates=[option]))
+                            break
+                    else:
+                        votes.append(Ballot(ranked_candidates=[]))
+
+                voted.append(author)
+            await context.send('Your vote was successfully cast')
+            log(f'Votes cast: {len(votes)} - Votes not yet cast: {len(registered_members)-len(votes)}')
 
 
 @bot.command(name='end', help='Ends the election for the currently live post')
@@ -818,19 +843,22 @@ async def end(context):
         return
 
     last_live_post = current_live_post
-    current_live_post = None
+    async with current_live_post_lock.writer_lock:
+        current_live_post = None
     voting_messages.clear()
-    voted.clear()
+    async with voted_lock:
+        voted.clear()
 
     await voting_channel.send(f'Voting has now ended for: {last_live_post[1]}')
 
-    if last_live_post[0] == 'POST':
-        results = pyrankvote.instant_runoff_voting([candidate for candidate, _ in standing[last_live_post[1]].values()],
-                                                   votes)
-    else:
-        results = pyrankvote.instant_runoff_voting(referendum_options, votes)
+    async with votes_lock.writer_lock:
+        if last_live_post[0] == 'POST':
+            results = pyrankvote.instant_runoff_voting([candidate for candidate, _ in standing[last_live_post[1]].values()],
+                                                       votes)
+        else:
+            results = pyrankvote.instant_runoff_voting(referendum_options, votes)
 
-    votes.clear()
+        votes.clear()
 
     # Announce the scores and the winner to the committee
     winner = results.get_winners()[0]

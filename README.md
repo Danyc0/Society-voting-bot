@@ -2,7 +2,7 @@
 A Discord bot for doing society elections. The voting system used is Instant Runoff Voting.
 
 ## Dependencies
-    pip install -U Discord.py python-dotenv pyrankvote
+    pip install -U Discord.py python-dotenv pyrankvote aiorwlock
 
 ## Setup
 
