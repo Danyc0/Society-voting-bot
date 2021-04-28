@@ -7,6 +7,7 @@ import re
 import pickle
 import smtplib
 import ssl
+import asyncio
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -609,6 +610,8 @@ async def begin(context, *post):
             await user.send(f'Ballot paper for: {post}, there are {num_candidates} candidates. '
                             f'(Please react to the messages below with :one:-{max_react}). '
                             f'**Don\'t forget to **`{PREFIX}submit <CODE>`** when you\'re done**:\n')
+            # Make sure the header arrives before the ballot paper
+            await asyncio.sleep(0.2)
 
             # Message the member with the shuffled candidate list, each in a separate message, record the message ID
             candidates = list(standing[post].items())
@@ -630,6 +633,8 @@ async def begin(context, *post):
             await user.send(f'Ballot paper for: {post}. Please react to the message for your choice below with '
                             ':ballot_box_with_check: (\\:ballot_box_with_check\\:). '
                             f'**Don\'t forget to **`{PREFIX}submit <CODE>`** when you\'re done**:\n')
+            # Make sure the header arrives before the ballot paper
+            await asyncio.sleep(0.2)
 
             # Message the member with the options list, each in a separate message, record the ID of the message
             voting_messages[user.id] = []
