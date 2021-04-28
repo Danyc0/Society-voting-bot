@@ -1,5 +1,5 @@
-# CSS voting-bot
-A Discord bot for doing CSS's elections. The voting system used is Instant Runoff Voting.
+# Society voting-bot
+A Discord bot for doing society elections. The voting system used is Instant Runoff Voting.
 
 ## Dependencies
     pip install -U Discord.py python-dotenv pyrankvote
@@ -13,8 +13,8 @@ You'll need to set seven environment variables:
 * COMMITTEE_CHANNEL_ID -> The Discord channel ID for the committee channel, this is where you setup new posts, get the members list and see results. This should be a channel only available to committee members.
 * VOTING_CHANNEL_ID -> The Discord channel ID for the voting channel, this is where elections are started by committee members. This should be a channel only available to members.
 
-* GUILD_URL -> The URL of the UoB Guild of Students members page (make sure it's listed by group).
-* GUILD_COOKIE -> Your Guild of Students session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Guild of Students website. You must be a committee member).
+* UNION_URL -> The URL of the Students Union/Guild of Students members page (make sure it's listed by group).
+* UNION_COOKIE -> Your Students Union/Guild of Students session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Students Union/Guild of Students website. You must be a committee member).
 
 * VOTERS_FILE -> The file that the registered voter list is backed up to.
 * STANDING_FILE -> The file that the standing candidates list is backed up to.

@@ -137,16 +137,16 @@ def email_secretary(candidate, post, stood_down=False):
         message['To'] = SECRETARY_EMAIL
 
         if not stood_down:
-            message['Subject'] = 'New candidate standing in the upcoming CSS election'
+            message['Subject'] = 'New candidate standing in the upcoming election'
             text = ('Hello,\n'
                     f'{candidate} has just stood for the position of {post} '
-                    'in the upcoming CSS election,\n'
+                    'in the upcoming election,\n'
                     'Goodbye')
         else:
-            message['Subject'] = 'Candidate no longer standing in the upcoming CSS election'
+            message['Subject'] = 'Candidate no longer standing in the upcoming election'
             text = ('Hello,\n'
                     f'{candidate} has just stood down from standing for the position of {post} '
-                    'in the upcoming CSS election,\n'
+                    'in the upcoming election,\n'
                     'Goodbye')
 
         # Turn the message text into a MIMEText object and add it to the MIMEMultipart message
@@ -266,7 +266,7 @@ async def register(context, student_number: int):
             output_str = f'Thank you {members[registered_members[author]]}, you are now registered\n\n{RULES_STRING}'
             log(f'{registered_members[author]} is now registered')
     else:
-        output_str = 'Looks like you\'re not a member yet, please become a member here: https://cssbham.com/join'
+        output_str = f'Looks like you\'re not a member yet, please become a member here: {JOIN_LINK}'
         log(f'{context.author.name} has failed to register because they are not a member')
 
     save_voters()
@@ -421,11 +421,11 @@ async def resetname(context, student_id: int):
 
     del preferred_names[student_id]
 
-    guild_name = get_members()[student_id]
+    union_name = get_members()[student_id]
 
     for post in standing:
         if student_id in standing[post]:
-            standing[post][student_id] = (Candidate(guild_name), standing[post][student_id][1])
+            standing[post][student_id] = (Candidate(union_name), standing[post][student_id][1])
     save_names()
     save_standing()
 
@@ -841,9 +841,9 @@ if __name__ == "__main__":
     COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
     VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
 
-    URL = os.getenv('GUILD_URL')
+    URL = os.getenv('UNION_URL')
     # This should be extracted from your .ASPXAUTH cookie
-    COOKIE = os.getenv('GUILD_COOKIE')
+    COOKIE = os.getenv('UNION_COOKIE')
 
     VOTERS_FILE = os.getenv('VOTERS_FILE')
     STANDING_FILE = os.getenv('STANDING_FILE')
@@ -854,6 +854,8 @@ if __name__ == "__main__":
 
     SECRETARY_NAME = os.getenv('SECRETARY_NAME')
     SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
+
+    JOIN_LINK = os.getenv('JOIN_LINK')
 
     SMTP_SERVER = os.getenv('SMTP_SERVER')
     SMTP_PORT = int(os.getenv('SMTP_PORT'))
