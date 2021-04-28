@@ -311,7 +311,7 @@ async def stand(context, *input):
                           f'({SECRETARY_EMAIL}), or someone else on the committee.\n'
                           'If you can\'t make it to the actual election call, you must get in touch with the secretary '
                           'ASAP to sort out alternative arrangements.')
-            log(f'{registered_members[author]} is now standing for {post}')
+            log(f'{context.author.name}({registered_members[author]}) is now standing for {post}')
             email_secretary(members[registered_members[author]], post)
     else:
         output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
@@ -351,6 +351,37 @@ async def standdown(context, *post):
 
     log(f'{registered_members[author]} has stood down from standing for {post}')
     await context.send(f'You have stood down from running for {post}')
+
+
+@bot.command(name='takedown', help='Stands a specific user down on their behalf')
+async def takedown(context, student_id :int, *post):
+    if not is_committee_member(context.author):
+        return
+
+    post = ' '.join(post)
+    if not post:
+        await context.send('You must supply the user to stand down and post you are '
+                           'standing them down from, usage: '
+                           f'`{PREFIX}takedown <user> <post>`')
+        return
+    matching_posts = match_post(post)
+    if not matching_posts:
+        await context.send('Looks like that post isn\'t available for this election, '
+                           f'use `{PREFIX}posts` to see the posts up for election`')
+        return
+    post = matching_posts[0]
+
+    if student_id not in standing[post]:
+        await context.send('Looks like this user isn\'t standing for this post')
+        return
+
+    email_secretary(str(standing[post][student_id][0]), post, stood_down=True)
+    del standing[post][student_id]
+
+    save_standing()
+
+    log(f'{student_id} has been stood down from standing for {post}')
+    await context.send(f'{student_id} has been stood down from running for {post}')
 
 
 @bot.command(name='changename', help='Change your name as used by the bot')
