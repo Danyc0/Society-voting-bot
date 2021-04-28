@@ -2,8 +2,6 @@ import os
 import time
 import datetime
 import random
-import requests
-import re
 import pickle
 import smtplib
 import ssl
@@ -22,6 +20,8 @@ from pyrankvote import Candidate, Ballot
 
 from discord.ext import commands
 from discord.channel import DMChannel
+
+import society_members
 
 # Workflow
 # See current members:   \members
@@ -106,18 +106,7 @@ def log(output_str):
 
 
 def get_members():
-    page = requests.get(URL, cookies={'.ASPXAUTH': COOKIE}).content.decode('utf-8')
-
-    table = re.search(r'All Members[\s\S]*?\d+ member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>', page).group(1)
-    members_parse = re.findall(r'/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)', table)
-    all_members = {int(member[2]): (f'{member[1]} {member[0]}') for member in members_parse}
-
-    table = re.search(r'Standard Membership[\s\S]*?\d+ member[\s\S]*?<table[\s\S]*?>([\s\S]+?)</table>', page).group(1)
-    members_parse = re.findall(r'/profile/\d+/\">([\s\S]+?), ([\s\S]+?)</a></td><td>(\d+)', table)
-    standard_membership = {int(member[2]): (f'{member[1]} {member[0]}') for member in members_parse}
-
-    # Format = {<Student Number>: <Name>}
-    members = {**all_members, **standard_membership}
+    members = society_members.get_members()
     members[0] = 'RON (Re-Open-Nominations)'
 
     # Substitute preferred names
@@ -840,10 +829,6 @@ if __name__ == "__main__":
     TOKEN = os.getenv('DISCORD_TOKEN')
     COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
     VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
-
-    URL = os.getenv('UNION_URL')
-    # This should be extracted from your .ASPXAUTH cookie
-    COOKIE = os.getenv('UNION_COOKIE')
 
     VOTERS_FILE = os.getenv('VOTERS_FILE')
     STANDING_FILE = os.getenv('STANDING_FILE')
