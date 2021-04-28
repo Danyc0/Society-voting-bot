@@ -360,7 +360,7 @@ async def takedown(context, student_id :int, *post):
 
     post = ' '.join(post)
     if not post:
-        await context.send('You must supply the user to stand down and post you are '
+        await context.send('You must supply the user to stand down and the post you are '
                            'standing them down from, usage: '
                            f'`{PREFIX}takedown <user> <post>`')
         return
