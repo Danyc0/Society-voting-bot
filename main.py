@@ -227,7 +227,7 @@ async def on_ready():
         print(' -', guild.name)
 
 
-@bot.command(name='members')
+@bot.command(name='members', help=f'List current members - Committee Only. Usage: {PREFIX}members')
 async def members(context):
     if not is_committee_channel(context.channel):
         return
@@ -244,7 +244,8 @@ async def members(context):
     await context.send(output_str)
 
 
-@bot.command(name='register', help='Register to vote')
+@bot.command(name='register', help=f'Register to vote - DM Only. Usage: {PREFIX}register <STUDENT NUMBER>',
+             usage='<STUDENT NUMBER>')
 async def register(context, student_number: int):
     if not is_dm(context.channel):
         await context.send('You need to DM me for this instead')
@@ -276,7 +277,8 @@ async def register(context, student_number: int):
     await context.send(output_str)
 
 
-@bot.command(name='stand', help='Stand for a post')
+@bot.command(name='stand', help=f'Stand for a post - DM Only. Usage: {PREFIX}stand <POST> <EMAIL ADDRESS>',
+             usage='<POST> <EMAIL ADDRESS>')
 async def stand(context, *input):
     if not is_dm(context.channel):
         await context.send('You need to DM me for this instead')
@@ -319,24 +321,26 @@ async def stand(context, *input):
             else:
                 standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email)
                 output_str = (f'Congratulations {members[registered_members[author]]}, '
-                              f'you are now standing for the position of {post}. If you no longer wish to stand, you can '
-                              f'send `{PREFIX}standdown {post}`\n\n'
+                              f'you are now standing for the position of {post}. If you no longer wish to stand, you '
+                              f'can send `{PREFIX}standdown {post}`\n\n'
                               'Now you\'ll need to prepare a 2 minute speech to be given in the election call.\n'
                               f'If you have any questions please contact the secretary {SECRETARY_NAME}'
                               f'({SECRETARY_EMAIL}), or someone else on the committee.\n'
-                              'If you can\'t make it to the actual election call, you must get in touch with the secretary '
-                              'ASAP to sort out alternative arrangements.')
+                              'If you can\'t make it to the actual election call, you must get in touch with the '
+                              'secretary ASAP to sort out alternative arrangements.')
                 log(f'{context.author.name}({registered_members[author]}) is now standing for {post}')
                 email_secretary(members[registered_members[author]], post)
         else:
-            output_str = f'Looks like you\'re not registered yet, please register using `{PREFIX}register <STUDENT NUMBER>`'
+            output_str = ('Looks like you\'re not registered yet, '
+                          f'please register using `{PREFIX}register <STUDENT NUMBER>`')
             log(f'{context.author.name} has failed to stand for {post} because they are not registered')
 
     save_standing()
     await context.send(output_str)
 
 
-@bot.command(name='standdown', help='Stand down from running for a post')
+@bot.command(name='standdown', help=f'Stand down from running for a post - DM Only. Usage: {PREFIX}standdown <POST>',
+             usage='<POST>')
 async def standdown(context, *post):
     if not is_dm(context.channel):
         await context.send('You need to DM me for this instead')
@@ -344,7 +348,7 @@ async def standdown(context, *post):
 
     post = ' '.join(post)
     if not post:
-        await context.send(f'Must supply the post you are standing down from, usage: `{PREFIX}standdown <post>`')
+        await context.send(f'Must supply the post you are standing down from, usage: `{PREFIX}standdown <POST>`')
         return
     matching_posts = match_post(post)
     if not matching_posts:
@@ -368,16 +372,16 @@ async def standdown(context, *post):
     await context.send(f'You have stood down from running for {post}')
 
 
-@bot.command(name='takedown', help='Stands a specific user down on their behalf')
-async def takedown(context, student_id :int, *post):
+@bot.command(name='takedown', help='Stands a specific user down on their behalf - Committee Only. '
+                                   f'Usage: {PREFIX}takedown <STUDENT ID> <POST>', usage='<STUDENT ID> <POST>')
+async def takedown(context, student_id: int, *post):
     if not is_committee_member(context.author):
         return
 
     post = ' '.join(post)
     if not post:
-        await context.send('You must supply the user to stand down and the post you are '
-                           'standing them down from, usage: '
-                           f'`{PREFIX}takedown <user> <post>`')
+        await context.send('You must supply the user to stand down and the post you are standing them down from, '
+                           f'usage: `{PREFIX}takedown <STUDENT NUMBER> <POST>`')
         return
     matching_posts = match_post(post)
     if not matching_posts:
@@ -399,7 +403,8 @@ async def takedown(context, student_id :int, *post):
     await context.send(f'{student_id} has been stood down from running for {post}')
 
 
-@bot.command(name='changename', help='Change your name as used by the bot')
+@bot.command(name='changename', help='Change your name as used by the bot - DM Only. '
+                                     f'Usage: {PREFIX}changename <NAME>', usage='<NAME>')
 async def changename(context, *name):
     if not is_dm(context.channel):
         await context.send('You need to DM me for this instead')
@@ -407,7 +412,7 @@ async def changename(context, *name):
 
     name = ' '.join(name)
     if not name:
-        await context.send(f'Must supply the name you are wanting to change to, usage: `{PREFIX}changename <name>`')
+        await context.send(f'Must supply the name you are wanting to change to, usage: `{PREFIX}changename <NAME>`')
         return
     if name.startswith('\''):
         name = name.strip('\'')
@@ -437,13 +442,14 @@ async def changename(context, *name):
     log(f'{context.author.name}({author_id}) has changed their name to {name}')
 
 
-@bot.command(name='resetname', help='Resets the name of the person with the specified student ID')
+@bot.command(name='resetname', help='Resets the name of the person with a given student number - Committee Only. '
+                                    f'Usage: {PREFIX}resetname <STUDENT NUMBER>', usage='<STUDENT NUMBER')
 async def resetname(context, student_id: int):
     if not is_committee_channel(context.channel):
         return
 
     if not student_id:
-        await context.send(f'You must supply a student ID. Usage: `{PREFIX}resetname <STUDENT ID>`')
+        await context.send(f'You must supply a student ID. Usage: `{PREFIX}resetname <STUDENT NUMBER>`')
         return
 
     if student_id not in preferred_names:
@@ -470,7 +476,7 @@ async def resetname(context, student_id: int):
     await context.send(f'The name used for {student_id} has been reset')
 
 
-@bot.command(name='posts', help='Prints the posts available to stand for in this election')
+@bot.command(name='posts', help=f'Prints the posts available to stand for in this election. Usage: {PREFIX}posts')
 async def posts(context):
     if not is_dm(context.channel) and not is_voting_channel(context.channel):
         return
@@ -485,7 +491,7 @@ async def posts(context):
     await context.send(output_str)
 
 
-@bot.command(name='referenda', help='Prints the referenda to be voted on in this election')
+@bot.command(name='referenda', help=f'Prints the referenda to be voted on in this election. Usage: {PREFIX}referenda')
 async def list_referenda(context):
     if not is_dm(context.channel) and not is_voting_channel(context.channel):
         return
@@ -501,7 +507,8 @@ async def list_referenda(context):
 
 
 @bot.command(name='candidates',
-             help='Prints the candidates for the specified post (or all posts if no post is given)')
+             help='Prints the candidates for the specified post (or all posts if no post is given). '
+                  f'Usage: {PREFIX}candidates [POST]', usage='[POST]')
 async def list_candidates(context, *post):
     if not is_dm(context.channel) and not is_voting_channel(context.channel):
         return
@@ -538,16 +545,17 @@ async def list_candidates(context, *post):
         await context.send(output_str)
 
 
-@bot.command(name='rules', help='Prints the rules and procedures for the election')
+@bot.command(name='rules', help=f'Prints the rules and procedures for the election. Usage: {PREFIX}rules')
 async def rules(context):
     if not is_voting_channel(context.channel) and not is_dm(context.author):
         return
 
-    await context.send(f'To register to vote, DM me with `{PREFIX}register <YOUR STUDENT ID NUMBER>` '
+    await context.send(f'To register to vote, DM me with `{PREFIX}register <STUDENT NUMBER>` '
                        f'(without the \'<>\')\n{RULES_STRING}')
 
 
-@bot.command(name='setup', help='Creates the specified post')
+@bot.command(name='setup', help=f'Creates the specified post - Committee Only. Usage: {PREFIX}setup <POST>',
+             usage='<POST>')
 async def setup(context, *post):
     if not is_committee_channel(context.channel):
         return
@@ -566,7 +574,9 @@ async def setup(context, *post):
     await context.send(f'The post of {post} has been created')
 
 
-@bot.command(name='rename', help='Renames the specified post. Note that both post names MUST be passed within quotes')
+@bot.command(name='rename', help='Renames the specified post. '
+                                 'Note that both post names MUST be passed within quotes - Committee Only. '
+                                 f'Usage: {PREFIX}rename <OLD POST> <NEW POST>', usage='<OLD POST> <NEW POST>')
 async def rename(context, old_post, new_post):
     if not is_committee_channel(context.channel):
         return
@@ -584,7 +594,9 @@ async def rename(context, old_post, new_post):
     await context.send(f'The post of {matching_posts[0]} has been renamed to {new_post}')
 
 
-@bot.command(name='referendum', help='Creates the specified referendum')
+@bot.command(name='referendum', help='Creates the specified referendum. '
+                                     'Note that both fields MUST be passed within quotes - Committee Only. '
+                                     f'Usage: {PREFIX}referendum <TITLE> <DESCRIPTION>', usage='<TITLE> <DESCRIPTION>')
 async def referendum(context, title, *description):
     if not is_committee_channel(context.channel):
         return
@@ -606,7 +618,8 @@ async def referendum(context, title, *description):
     await context.send(f'The referendum for \"{title}\" has been created')
 
 
-@bot.command(name='begin', help='Begins the election for the specified post/referendum')
+@bot.command(name='begin', help='Begins the election for the specified post/referendum - Committee Only. '
+                                f'Usage: {PREFIX}begin <POST/TITLE>', usage='<POST/TITLE>')
 async def begin(context, *post):
     global current_live_post
 
@@ -617,8 +630,8 @@ async def begin(context, *post):
 
     post = ' '.join(post)
     if not post:
-        await context.send('Must supply the post/referendum you are starting the vote for, usage:'
-                           f'`{PREFIX}begin <post/referendum>`')
+        await context.send('Must supply the post/referendum title you are starting the vote for, usage:'
+                           f'`{PREFIX}begin <POST/TITLE>`')
         return
 
     matching_posts = match_post(post)
@@ -689,7 +702,7 @@ async def begin(context, *post):
                            'in your DMs')
 
 
-@bot.command(name='validate', help='Checks to see if your vote will be accepted')
+@bot.command(name='validate', help=f'Checks to see if your vote will be accepted - DM Only. Usage: {PREFIX}validate')
 async def validate(context):
     if not is_dm(context.channel):
         return False
@@ -777,7 +790,8 @@ async def validate_referendum(context, author):
     return valid
 
 
-@bot.command(name='submit', help='Submits your vote')
+@bot.command(name='submit', help=f'Submits your vote - DM Only. Usage: {PREFIX}submit <VOTING CODE>',
+             usage='<VOTING CODE>')
 async def submit(context, code=None):
     if not is_dm(context.channel):
         await context.send('You need to DM this to me instead')
@@ -833,7 +847,7 @@ async def submit(context, code=None):
             log(f'Votes cast: {len(votes)} - Votes not yet cast: {len(registered_members)-len(votes)}')
 
 
-@bot.command(name='end', help='Ends the election for the currently live post')
+@bot.command(name='end', help=f'Ends the election for the currently live post - Committee Only. Usage: {PREFIX}end')
 async def end(context):
     global current_live_post
 
@@ -853,7 +867,7 @@ async def end(context):
 
     async with votes_lock.writer_lock:
         if last_live_post[0] == 'POST':
-            results = pyrankvote.instant_runoff_voting([candidate for candidate, _ in standing[last_live_post[1]].values()],
+            results = pyrankvote.instant_runoff_voting([i for i, _ in standing[last_live_post[1]].values()],
                                                        votes)
         else:
             results = pyrankvote.instant_runoff_voting(referendum_options, votes)
