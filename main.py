@@ -443,7 +443,7 @@ async def changename(context, *name):
 
 
 @bot.command(name='resetname', help='Resets the name of the person with a given student number - Committee Only. '
-                                    f'Usage: {PREFIX}resetname <STUDENT NUMBER>', usage='<STUDENT NUMBER')
+                                    f'Usage: {PREFIX}resetname <STUDENT NUMBER>', usage='<STUDENT NUMBER>')
 async def resetname(context, student_id: int):
     if not is_committee_channel(context.channel):
         return
