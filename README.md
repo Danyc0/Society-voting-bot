@@ -23,6 +23,7 @@ You'll need to set seven environment variables:
 
 * SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
 
+* COMMITTEE_ROLE -> The role name for committee members (who are the only people who can start/end voting)
 * SECRETARY_NAME -> The name of the current secretary.
 * SECRETARY_EMAIL -> The email address of the secretary. This is needed in case a candidate cannot make the live election call, and to notify the secretary of new candidates.
 

@@ -197,7 +197,7 @@ def is_committee_channel(channel):
 
 
 def is_committee_member(user):
-    return any([True for role in user.roles if str(role) == 'Committee'])
+    return any([True for role in user.roles if str(role) == COMMITTEE_ROLE])
 
 
 def match_post(post):
@@ -910,6 +910,7 @@ if __name__ == "__main__":
 
     SHEET_ID = os.getenv('SHEET_ID')
 
+    COMMITTEE_ROLE = os.getenv('COMMITTEE_ROLE')
     SECRETARY_NAME = os.getenv('SECRETARY_NAME')
     SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
 
