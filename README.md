@@ -39,6 +39,7 @@ You can put these in a .env file in the repo directory as it uses dotenv (see [h
 
 You will also need a token.json file to authorise access to the Google Sheets API and a Google account with access to the candidates spreadsheet. [This guide](https://developers.google.com/sheets/api/quickstart/python) will generate the correct token, as long as you set it up to use the "auth/spreadsheets" scope, in both the OAuth Credentials step, and the example code.
 
+Bot requires send message and edit message permissions for full functionality
 ## Contributions
 
 In short, patches welcome. If you raise a PR, I'll review it, test it, and (probably) merge it.
