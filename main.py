@@ -208,6 +208,14 @@ def match_referendum(referendum):
     return [a for a in referenda if a.lower() == referendum.lower()]
 
 
+async def committee_channel_check(context):
+    return context.channel.id == int(os.getenv('COMMITTEE_CHANNEL_ID'))
+
+
+async def public_channel_check(context):
+    return context.channel.id != VOTING_CHANNEL_ID and not isinstance(context.channel, DMChannel)
+
+
 @bot.event
 async def on_ready():
     global committee_channel
@@ -228,9 +236,8 @@ async def on_ready():
 
 
 @bot.command(name='members', help=f'List current members - Committee Only. Usage: {PREFIX}members')
+@commands.check(committee_channel_check)
 async def members(context):
-    if not is_committee_channel(context.channel):
-        return
 
     members = get_members()
     output_str = '```\n'
@@ -246,10 +253,8 @@ async def members(context):
 
 @bot.command(name='register', help=f'Register to vote - DM Only. Usage: {PREFIX}register <STUDENT NUMBER>',
              usage='<STUDENT NUMBER>')
+@commands.dm_only()
 async def register(context, student_number: int):
-    if not is_dm(context.channel):
-        await context.send('You need to DM me for this instead')
-        return
 
     author = context.author.id
     members = get_members()
@@ -279,10 +284,8 @@ async def register(context, student_number: int):
 
 @bot.command(name='stand', help=f'Stand for a post - DM Only. Usage: {PREFIX}stand <POST> <EMAIL ADDRESS>',
              usage='<POST> <EMAIL ADDRESS>')
+@commands.dm_only()
 async def stand(context, *input):
-    if not is_dm(context.channel):
-        await context.send('You need to DM me for this instead')
-        return
     if not input:
         await context.send('Must supply the post you are running for and a valid email address, '
                            f'usage:`{PREFIX}stand <POST> <EMAIL>`')
@@ -341,10 +344,8 @@ async def stand(context, *input):
 
 @bot.command(name='standdown', help=f'Stand down from running for a post - DM Only. Usage: {PREFIX}standdown <POST>',
              usage='<POST>')
+@commands.dm_only()
 async def standdown(context, *post):
-    if not is_dm(context.channel):
-        await context.send('You need to DM me for this instead')
-        return
 
     post = ' '.join(post)
     if not post:
@@ -374,9 +375,8 @@ async def standdown(context, *post):
 
 @bot.command(name='takedown', help='Stands a specific user down on their behalf - Committee Only. '
                                    f'Usage: {PREFIX}takedown <STUDENT ID> <POST>', usage='<STUDENT ID> <POST>')
+@commands.check(committee_channel_check)
 async def takedown(context, student_id: int, *post):
-    if not is_committee_member(context.author):
-        return
 
     post = ' '.join(post)
     if not post:
@@ -405,10 +405,8 @@ async def takedown(context, student_id: int, *post):
 
 @bot.command(name='changename', help='Change your name as used by the bot - DM Only. '
                                      f'Usage: {PREFIX}changename <NAME>', usage='<NAME>')
+@commands.dm_only()
 async def changename(context, *name):
-    if not is_dm(context.channel):
-        await context.send('You need to DM me for this instead')
-        return
 
     name = ' '.join(name)
     if not name:
@@ -444,10 +442,8 @@ async def changename(context, *name):
 
 @bot.command(name='resetname', help='Resets the name of the person with a given student number - Committee Only. '
                                     f'Usage: {PREFIX}resetname <STUDENT NUMBER>', usage='<STUDENT NUMBER>')
+@commands.check(committee_channel_check)
 async def resetname(context, student_id: int):
-    if not is_committee_channel(context.channel):
-        return
-
     if not student_id:
         await context.send(f'You must supply a student ID. Usage: `{PREFIX}resetname <STUDENT NUMBER>`')
         return
@@ -477,10 +473,8 @@ async def resetname(context, student_id: int):
 
 
 @bot.command(name='posts', help=f'Prints the posts available to stand for in this election. Usage: {PREFIX}posts')
+@commands.check(public_channel_check)
 async def posts(context):
-    if not is_dm(context.channel) and not is_voting_channel(context.channel):
-        return
-
     if standing:
         output_str = '```\n'
         for post in standing:
@@ -492,10 +486,8 @@ async def posts(context):
 
 
 @bot.command(name='referenda', help=f'Prints the referenda to be voted on in this election. Usage: {PREFIX}referenda')
+@commands.check(public_channel_check)
 async def list_referenda(context):
-    if not is_dm(context.channel) and not is_voting_channel(context.channel):
-        return
-
     if referenda:
         output_str = '```\n'
         for title, description in referenda.items():
@@ -509,9 +501,8 @@ async def list_referenda(context):
 @bot.command(name='candidates',
              help='Prints the candidates for the specified post (or all posts if no post is given). '
                   f'Usage: {PREFIX}candidates [POST]', usage='[POST]')
+@commands.check(public_channel_check)
 async def list_candidates(context, *post):
-    if not is_dm(context.channel) and not is_voting_channel(context.channel):
-        return
     if not standing:
         await context.send('There are currently no posts set up in this election')
         return
@@ -546,20 +537,16 @@ async def list_candidates(context, *post):
 
 
 @bot.command(name='rules', help=f'Prints the rules and procedures for the election. Usage: {PREFIX}rules')
+@commands.check(public_channel_check)
 async def rules(context):
-    if not is_voting_channel(context.channel) and not is_dm(context.author):
-        return
-
     await context.send(f'To register to vote, DM me with `{PREFIX}register <STUDENT NUMBER>` '
                        f'(without the \'<>\')\n{RULES_STRING}')
 
 
 @bot.command(name='setup', help=f'Creates the specified post - Committee Only. Usage: {PREFIX}setup <POST>',
              usage='<POST>')
+@commands.check(committee_channel_check)
 async def setup(context, *post):
-    if not is_committee_channel(context.channel):
-        return
-
     post = ' '.join(post)
     matching_posts = match_post(post)
     if matching_posts:
@@ -577,10 +564,8 @@ async def setup(context, *post):
 @bot.command(name='rename', help='Renames the specified post. '
                                  'Note that both post names MUST be passed within quotes - Committee Only. '
                                  f'Usage: {PREFIX}rename <OLD POST> <NEW POST>', usage='<OLD POST> <NEW POST>')
+@commands.check(committee_channel_check)
 async def rename(context, old_post, new_post):
-    if not is_committee_channel(context.channel):
-        return
-
     matching_posts = match_post(old_post)
     if not matching_posts:
         await context.send(f'{old_post} doesn\'t exist')
@@ -597,10 +582,8 @@ async def rename(context, old_post, new_post):
 @bot.command(name='referendum', help='Creates the specified referendum. '
                                      'Note that both fields MUST be passed within quotes - Committee Only. '
                                      f'Usage: {PREFIX}referendum <TITLE> <DESCRIPTION>', usage='<TITLE> <DESCRIPTION>')
+@commands.check(committee_channel_check)
 async def referendum(context, title, *description):
-    if not is_committee_channel(context.channel):
-        return
-
     description = ' '.join(description)
     if description.startswith('\''):
         description = description.strip('\'')
@@ -703,9 +686,8 @@ async def begin(context, *post):
 
 
 @bot.command(name='validate', help=f'Checks to see if your vote will be accepted - DM Only. Usage: {PREFIX}validate')
+@commands.dm_only()
 async def validate(context):
-    if not is_dm(context.channel):
-        return False
     # Only work for users who got sent messages
     author = context.author.id
     if author not in voting_messages:
@@ -792,10 +774,8 @@ async def validate_referendum(context, author):
 
 @bot.command(name='submit', help=f'Submits your vote - DM Only. Usage: {PREFIX}submit <VOTING CODE>',
              usage='<VOTING CODE>')
+@commands.dm_only()
 async def submit(context, code=None):
-    if not is_dm(context.channel):
-        await context.send('You need to DM this to me instead')
-        return
     # Only work for users who got sent messages
     author = context.author.id
     if author not in voting_messages:
