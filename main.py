@@ -322,7 +322,7 @@ async def stand(context, *input):
                 output_str = (f'It looks like you, {members[registered_members[author]]} are already '
                               f'standing for the position of: {post}')
             else:
-                standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email)
+                standing[post][registered_members[author]] = (Candidate(members[registered_members[author]]), email, author)
                 output_str = (f'Congratulations {members[registered_members[author]]}, '
                               f'you are now standing for the position of {post}. If you no longer wish to stand, you '
                               f'can send `{PREFIX}standdown {post}`\n\n'
@@ -432,7 +432,7 @@ async def changename(context, *name):
 
         for post in standing:
             if author_id in standing[post]:
-                standing[post][author_id] = (Candidate(name), standing[post][author_id][1])
+                standing[post][author_id] = (Candidate(name), standing[post][author_id][1], author)
     save_names()
     save_standing()
 
@@ -464,7 +464,7 @@ async def resetname(context, student_id: int):
 
         for post in standing:
             if student_id in standing[post]:
-                standing[post][student_id] = (Candidate(union_name), standing[post][student_id][1])
+                standing[post][student_id] = (Candidate(union_name), standing[post][student_id][1], context.author.id)
     save_names()
     save_standing()
 
@@ -514,22 +514,22 @@ async def list_candidates(context, *post):
         matching_posts = match_post(post)
         if matching_posts:
             post = matching_posts[0]
-            candidates = [str(candidate) for candidate, _ in standing[post].values()]
+            candidates = [(str(candidate), discordid) for candidate, _, discordid in standing[post].values()]
             random.shuffle(candidates)
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
-                output_str += f' - {candidate}\n'
+                output_str += f' - {candidate[0]} - {(await bot.fetch_user(candidate[1])).display_name}\n'
             output_str += '--------\n'
         else:
             output_str = ('Looks like that post isn\'t in this election, '
                           f'use `{PREFIX}posts` to see the posts up for election`')
     else:
         for post in standing:
-            candidates = [str(candidate) for candidate, _ in standing[post].values()]
+            candidates = [(str(candidate), discordid) for candidate, _, discordid in standing[post].values()]
             random.shuffle(candidates)
             output_str += f'Candidates standing for {post}:\n'
             for candidate in candidates:
-                output_str += f' - {candidate}\n'
+                output_str += f' - {candidate} - {(await bot.fetch_user(candidate[1])).display_name}\n'
             output_str += '--------\n'
 
     if output_str:
@@ -553,7 +553,7 @@ async def setup(context, *post):
         await context.send(f'{post} already exists')
         return
 
-    standing[post] = {0: (Candidate('RON (Re-Open Nominations)'), 'ron@example.com')}
+    standing[post] = {0: (Candidate('RON (Re-Open Nominations)'), 'ron@example.com', 42)}
 
     save_standing()
 
@@ -847,7 +847,7 @@ async def end(context):
 
     async with votes_lock.writer_lock:
         if last_live_post[0] == 'POST':
-            results = pyrankvote.instant_runoff_voting([i for i, _ in standing[last_live_post[1]].values()],
+            results = pyrankvote.instant_runoff_voting([i for i, _, _ in standing[last_live_post[1]].values()],
                                                        votes)
         else:
             results = pyrankvote.instant_runoff_voting(referendum_options, votes)
