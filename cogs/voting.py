@@ -1,3 +1,5 @@
+# A Cog for commands to register and vote in elections #
+
 from pyrankvote import Ballot
 
 from discord.ext import commands

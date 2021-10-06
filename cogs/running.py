@@ -1,3 +1,5 @@
+# A Cog for running, and managing your run, in elections #
+
 from pyrankvote import Candidate
 
 from discord.ext import commands
