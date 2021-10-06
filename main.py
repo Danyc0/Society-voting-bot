@@ -611,9 +611,7 @@ async def delete(context, *, post):
         while True:
             msg = await bot.wait_for('message', check=check, timeout=60)
             if msg.content.lower() in ['y', 'yes']:
-                standing.pop(post)
-                await context.send(f'{post} deleted')
-                return
+                break
             elif msg.content.lower() in ['n', 'no']:
                 await context.send('Delete cancelled')
                 return
