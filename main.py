@@ -45,7 +45,6 @@ bot = commands.Bot(command_prefix=PREFIX)
 
 @bot.event
 async def on_ready():
-
     print(f'{bot.user.name} has connected to Discord and is in the following channels:')
     for guild in bot.guilds:
         print(' -', guild.name)
@@ -56,4 +55,8 @@ if __name__ == "__main__":
     load_dotenv()
     TOKEN = os.getenv('DISCORD_TOKEN')
 
+    bot.load_extension('cogs.admin')
+    bot.load_extension('cogs.info')
+    bot.load_extension('cogs.running')
+    bot.load_extension('cogs.voting')
     bot.run(TOKEN)
