@@ -578,6 +578,34 @@ async def rename(context, old_post, new_post):
     log(f'The post of {matching_posts[0]} has been renamed to {new_post}')
     await context.send(f'The post of {matching_posts[0]} has been renamed to {new_post}')
 
+@bot.command(name='delete', help='Deletes the specified post. '
+                                 'Note that both post names MUST be passed within quotes - Committee Only. '
+                                 f'Usage: {PREFIX}delete <POST>', usage='<POST>')
+@commands.check(committee_channel_check)
+async def delete(context, *, post):
+    def check(msg):
+        return msg.author == context.author and msg.channel == context.channel
+
+    matching_posts = match_post(post)
+    if not matching_posts:
+        await context.send(f'{post} doesn\'t exist')
+        return
+
+    if standing[post].items():
+        await context.send(f'Members are already running for {post}, would you like to delete it? [(y)es/(n)o]')
+        while True:
+            msg = await bot.wait_for('message', check=check, timeout=60)
+            if msg.content.lower() in ['y', 'yes']:
+                break
+            elif msg.content.lower() in ['n', 'no']:
+                await context.send('Delete cancelled')
+                return
+            else:
+                await context.send('I didn\'t understand that, please answer (y)es or (n)o')
+
+    standing.pop(post)
+    await context.send(f'{post} deleted')
+    return
 
 @bot.command(name='referendum', help='Creates the specified referendum. '
                                      'Note that both fields MUST be passed within quotes - Committee Only. '
