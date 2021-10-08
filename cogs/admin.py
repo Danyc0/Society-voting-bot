@@ -61,8 +61,6 @@ class Admin(commands.Cog):
     @checkers.voting_channel_check()
     @checkers.committee_member_check()
     async def begin(self, context, *post):
-        global current_live_post
-
         post = ' '.join(post)
         if not post:
             await context.send('Must supply the post/referendum title you are starting the vote for, usage:'
@@ -80,7 +78,7 @@ class Admin(commands.Cog):
                 return
 
         async with helpers.current_live_post_lock.writer_lock:
-            if current_live_post:
+            if helpers.current_live_post:
                 await context.send('You can\'t start a new vote until the last one has finished')
                 return
             post = matching_posts[0]
@@ -139,14 +137,12 @@ class Admin(commands.Cog):
     @checkers.voting_channel_check()
     @checkers.committee_member_check()
     async def end(self, context):
-        global current_live_post
-
         voting_channel = await self.bot.fetch_channel(helpers.VOTING_CHANNEL_ID)
         committee_channel = await self.bot.fetch_chhanel(helpers.COMMITTEE_CHANNEL_ID)
     
-        last_live_post = current_live_post
+        last_live_post = helpers.current_live_post
         async with helpers.current_live_post_lock.writer_lock:
-            current_live_post = None
+            helpers.current_live_post = None
         helpers.voting_messages.clear()
         async with helpers.voted_lock:
             helpers.voted.clear()
