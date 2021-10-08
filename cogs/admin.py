@@ -264,7 +264,7 @@ class Admin(commands.Cog):
             return
 
         async with helpers.current_live_post_lock.reader_lock:
-            if current_live_post:
+            if helpers.current_live_post:
                 await context.send('I\'m afraid you can\'t reset a name whilst a vote is ongoing, '
                                    f'please wait until the vote has finished, or end it early using `{helpers.PREFIX}end`')
                 return
