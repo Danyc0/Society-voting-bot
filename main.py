@@ -45,10 +45,17 @@ bot = commands.Bot(command_prefix=PREFIX)
 
 @bot.event
 async def on_ready():
-
     print(f'{bot.user.name} has connected to Discord and is in the following channels:')
     for guild in bot.guilds:
         print(' -', guild.name)
+
+
+@bot.event
+async def on_message(message):
+    try:
+        await bot.process_commands(message)
+    except commands.errors.CommandNotFound:
+        await message.channel.send(f'I could not find that command, please use {PREFIX}help for a list of commands')
 
 
 if __name__ == "__main__":
