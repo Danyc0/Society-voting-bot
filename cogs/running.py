@@ -138,7 +138,26 @@ class Running(commands.Cog):
     
         await context.send(f'The bot now recognises your name to be {name}')
         helpers.log(f'{context.author.name}({author_id}) has changed their name to {name}')
-    
+
+# Error handling #
+
+    async def dm_error(self, context, error):
+        if isinstance(error, commands.errors.PrivateMessageOnly):
+            await context.send('This command is DM only, please try again in a private message to me.')
+            return True
+
+    @stand.error
+    async def stand_error(self, context, error):
+        await self.dm_error(context, error)
+
+    @standdown.error
+    async def standdown_error(self, context, error):
+        await self.dm_error(context, error)
+
+    @changename.error
+    async def changename_error(self, context, error):
+        await self.dm_error(context, error)
+
 
 def setup(bot):
     bot.add_cog(Running(bot))

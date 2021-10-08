@@ -68,7 +68,6 @@ class Admin(commands.Cog):
             await context.send('Must supply the post/referendum title you are starting the vote for, usage:'
                                f'`{helpers.PREFIX}begin <POST/TITLE>`')
             return
-
         matching_posts = helpers.match_post(post)
         type = 'POST'
         if not matching_posts:
@@ -264,10 +263,6 @@ class Admin(commands.Cog):
                                         f'Usage: {helpers.PREFIX}resetname <STUDENT NUMBER>', usage='<STUDENT NUMBER>')
     @checkers.committee_channel_check()
     async def resetname(self, context, student_id: int):
-        if not student_id:
-            await context.send(f'You must supply a student ID. Usage: `{helpers.PREFIX}resetname <STUDENT NUMBER>`')
-            return
-
         if student_id not in helpers.preferred_names:
             await context.send('The supplied student ID has not updated their name')
             return
@@ -290,6 +285,64 @@ class Admin(commands.Cog):
 
         helpers.log(f'The name used for {student_id} has been reset')
         await context.send(f'The name used for {student_id} has been reset')
+
+# Error Handling #
+
+    # Returns a value so we can check if that check has failed before potentially
+    # Exposing command structure to unverified users
+    async def committee_channel_error(self, context, error):
+        if isinstance(error, commands.errors.NoPrivateMessage) or isinstance(error, commands.errors.CheckFailure):
+            await context.send('This command is for committee only, please run in the designated committee channel')
+            return True
+
+    @referendum.error
+    async def referendum_error(self, context, error):
+        if not await self.committee_channel_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send(f'Must supply a name and description for the new referendum. Usage: `{helpers.PREFIX}referendum <TITLE> <DESCRIPTION>`')
+
+    @setup.error
+    async def setup_error(self, context, error):
+        if not await self.committee_channel_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send(f'Must supply a name for the new post. Usage: `{helpers.PREFIX}setup <NEW_POST>`')
+
+    @begin.error
+    async def begin_error(self, context, error):
+        if not await self.committee_channel_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send('Must supply the post/referendum title you are starting the vote for, usage:'
+                                    f'`{helpers.PREFIX}begin <POST/TITLE>`')
+
+    @end.error
+    async def end_error(self, context, error):
+        await self.committee_channel_error(context, error)
+
+    @rename.error
+    async def rename_error(self, context, error):
+        if not await self.committee_channel_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send(f'You must supply a post and the new name. Usage: `{helpers.PREFIX}rename <OLD_POST> <NEW_POST>`')
+
+    @delete.error
+    async def delete_error(self, context, error):
+        if not await self.committee_channel_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send(f'You must supply a post to delete. Usage: `{helpers.PREFIX}delete <POST>`')
+
+    @takedown.error
+    async def takedown_error(self, context, error):
+        if not await self.committee_channel_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send(f'You must supply a student ID and post to standdown a user. Usage: `{helpers.PREFIX}takedown <STUDENT_NUMBER> <POST>`')
+            if isinstance(error, commands.errors.BadArgument):
+                await context.send(f'Please make sure you send a student number with the post to standdown a user. Usage: `{helpers.PREFIX}takedown <STUDENT_NUMBER> <POST>`')
+
+    @resetname.error
+    async def resetname_error(self, context, error):
+        if not await self.committee_channel_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument) or isinstance(error, commands.errors.BadArgument):
+                await context.send(f'You must supply a student ID. Usage: `{helpers.PREFIX}resetname <STUDENT NUMBER>`')
 
 
 def setup(bot):
