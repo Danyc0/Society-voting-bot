@@ -55,7 +55,7 @@ async def on_message(message):
     try:
         await bot.process_commands(message)
     except commands.errors.CommandNotFound:
-        await message.channel.send(f'I could not find that command, please use {PREFIX}help for a list of commands')
+        await message.channel.send(f'I couldn\'t find that command, please use {PREFIX}help for a list of commands.')
 
 
 if __name__ == "__main__":
