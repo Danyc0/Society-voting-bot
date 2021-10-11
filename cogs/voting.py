@@ -48,13 +48,10 @@ class Voting(commands.Cog):
     @commands.command(name='submit', help=f'Submits your vote - DM Only. Usage: {helpers.PREFIX}submit <VOTING CODE>',
                  usage='<VOTING CODE>')
     @commands.dm_only()
-    async def submit(self, context, code=None):
+    async def submit(self, context, code):
         # Only work for users who got sent messages
         author = context.author.id
         if author not in helpers.voting_messages:
-            return
-        if not code:
-            await context.send('You must supply the code given out in the election call, your vote was not cast')
             return
 
         if code.upper() != helpers.VOTING_CODE:
@@ -183,6 +180,28 @@ class Voting(commands.Cog):
         await context.send(output_str)
         return valid
 
+# Error handling #
+
+    async def dm_error(self, context, error):
+        if isinstance(error, commands.errors.PrivateMessageOnly):
+            await context.send('This command is DM only, please try again in a private message to me.')
+            return True
+
+    @register.error
+    async def register_error(self, context, error):
+        if not await self.dm_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send(f'Must supply a student number. Usage: {helpers.PREFIX}register <STUDENT NUMBER>')
+
+    @submit.error
+    async def submit_error(self, context, error):
+        if not await self.dm_error(context, error):
+            if isinstance(error, commands.errors.MissingRequiredArgument):
+                await context.send(f'You must supply the code given out in the election call, your vote was not cast. Usage: {helpers.PREFIX}submit <STUDENT NUMBER>')
+
+    @validate.error
+    async def validate_error(self, context, error):
+        await self.dm_error(context, error)
 
 def setup(bot):
     bot.add_cog(Voting(bot))

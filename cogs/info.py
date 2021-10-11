@@ -95,6 +95,38 @@ class Info(commands.Cog):
         output_str += '```'
         await context.send(output_str)
 
+# Error handling #
+
+    async def committee_channel_error(self, context, error):
+        if isinstance(error, commands.errors.NoPrivateMessage) or isinstance(error, commands.errors.CheckFailure):
+            await context.send('This command is for committee only, please run in the designated committee channel')
+            return True
+
+    async def voting_channel_error(self, context, error):
+        if isinstance(error, commands.errors.NoPrivateMessage) or isinstance(error, commands.errors.CheckFailure):
+            await context.send('Please only run this command in public, non-voting channels')
+            return True
+
+    @posts.error
+    async def posts_error(self, context, error):
+        await self.voting_channel_error(context, error)
+
+    @list_referenda.error
+    async def list_referenda_error(self, context, error):
+        await self.voting_channel_error(context, error)
+
+    @list_candidates.error
+    async def list_candidates_error(self, context, error):
+        await self.voting_channel_error(context, error)
+
+    @rules.error
+    async def rules_error(self, context, error):
+        await self.voting_channel_error(context, error)
+
+    @members.error
+    async def members_error(self, context, error):
+        await self.committee_channel_error(context, error)
+
 
 def setup(bot):
     bot.add_cog(Info(bot))
