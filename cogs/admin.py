@@ -210,17 +210,20 @@ class Admin(commands.Cog):
             await context.send(f'{post} doesn\'t exist')
             return
 
+        post = matching_posts[0]
+
         if helpers.standing[post].items():
-            await context.send(f'Members are already running for {post}, would you like to delete it? [(y)es/(n)o]')
-            while True:
-                msg = await self.bot.wait_for('message', check=check, timeout=60)
-                if msg.content.lower() in ['y', 'yes']:
-                    break
-                elif msg.content.lower() in ['n', 'no']:
-                    await context.send('Delete cancelled')
-                    return
-                else:
-                    await context.send('I didn\'t understand that, please answer (y)es or (n)o')
+            if not (len(helpers.standing[post]) == 1 and helpers.standing[post][0]):
+                await context.send(f'Members are already running for {post}, would you like to delete it? [(y)es/(n)o]')
+                while True:
+                    msg = await self.bot.wait_for('message', check=check, timeout=60)
+                    if msg.content.lower() in ['y', 'yes']:
+                        break
+                    elif msg.content.lower() in ['n', 'no']:
+                        await context.send('Delete cancelled')
+                        return
+                    else:
+                        await context.send('I didn\'t understand that, please answer (y)es or (n)o')
 
         helpers.standing.pop(post)
         await context.send(f'{post} deleted')
