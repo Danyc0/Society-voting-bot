@@ -15,29 +15,29 @@ class Running(commands.Cog):
 
     # Commands #
 
-    @commands.command(name='stand', help=f'Stand for a post - DM Only. Usage: {helpers.PREFIX)}stand <POST> <EMAIL ADDRESS>',
+    @commands.command(name='stand', help=f'Stand for a post - DM Only. Usage: {helpers.PREFIX}stand <POST> <EMAIL ADDRESS>',
                  usage='<POST> <EMAIL ADDRESS>')
     @commands.dm_only()
     async def stand(self, context, *input):
         if not input:
             await context.send('Must supply the post you are running for and a valid email address, '
-                               f'usage:`{helpers.PREFIX)}stand <POST> <EMAIL>`')
+                               f'usage:`{helpers.PREFIX}stand <POST> <EMAIL>`')
             return
         email = input[-1]
         post = ' '.join(input[:-1])
         if not post:
             await context.send('Must supply the post you are running for and a valid email address, '
-                               f'usage:`{helpers.PREFIX)}stand <POST> <EMAIL>`')
+                               f'usage:`{helpers.PREFIX}stand <POST> <EMAIL>`')
             return
         if '@' not in email:
             await context.send('Must supply the post you are running for and a valid email address, '
-                               f'usage:`{helpers.PREFIX)}stand <POST> <EMAIL>`')
+                               f'usage:`{helpers.PREFIX}stand <POST> <EMAIL>`')
             return
 
         matching_posts = helpers.match_post(post)
         if not matching_posts:
             await context.send('Looks like that post isn\'t available for this election, '
-                               f'use `{helpers.PREFIX)}posts` to see the posts up for election')
+                               f'use `{helpers.PREFIX}posts` to see the posts up for election')
             return
         post = matching_posts[0]
         async with helpers.current_live_post_lock.reader_lock:
@@ -58,7 +58,7 @@ class Running(commands.Cog):
                     helpers.standing[post][helpers.registered_members[author]] = (Candidate(members[helpers.registered_members[author]]), email, author)
                     output_str = (f'Congratulations {members[helpers.registered_members[author]]}, '
                                   f'you are now standing for the position of {post}. If you no longer wish to stand, you '
-                                  f'can send `{helpers.PREFIX)}standdown {post}`\n\n'
+                                  f'can send `{helpers.PREFIX}standdown {post}`\n\n'
                                   'Now you\'ll need to prepare a 2 minute speech to be given in the election call.\n'
                                   f'If you have any questions please contact the secretary {helpers.SECRETARY_NAME}'
                                   f'({helpers.SECRETARY_EMAIL}), or someone else on the committee.\n'
@@ -68,24 +68,24 @@ class Running(commands.Cog):
                     helpers.email_secretary(members[helpers.registered_members[author]], post)
             else:
                 output_str = ('Looks like you\'re not registered yet, '
-                              f'please register using `{helpers.PREFIX)}register <STUDENT NUMBER>`')
+                              f'please register using `{helpers.PREFIX}register <STUDENT NUMBER>`')
                 helpers.log(f'{context.author.name} has failed to stand for {post} because they are not registered')
 
         helpers.save_standing()
         await context.send(output_str)
 
-    @commands.command(name='standdown', help=f'Stand down from running for a post - DM Only. Usage: {helpers.PREFIX)}standdown <POST>',
+    @commands.command(name='standdown', help=f'Stand down from running for a post - DM Only. Usage: {helpers.PREFIX}standdown <POST>',
                  usage='<POST>')
     @commands.dm_only()
     async def standdown(self, context, *post):
         post = ' '.join(post)
         if not post:
-            await context.send(f'Must supply the post you are standing down from, usage: `{helpers.PREFIX)}standdown <POST>`')
+            await context.send(f'Must supply the post you are standing down from, usage: `{helpers.PREFIX}standdown <POST>`')
             return
         matching_posts = helpers.match_post(post)
         if not matching_posts:
             await context.send('Looks like that post isn\'t available for this election, '
-                               f'use `{helpers.PREFIX)}posts` to see the posts up for election`')
+                               f'use `{helpers.PREFIX}posts` to see the posts up for election`')
             return
         post = matching_posts[0]
 
