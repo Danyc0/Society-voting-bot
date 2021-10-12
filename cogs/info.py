@@ -57,7 +57,10 @@ class Info(commands.Cog):
                 random.shuffle(candidates)
                 output_str += f'Candidates standing for {post}:\n'
                 for candidate in candidates:
-                    output_str += f' - {candidate[0]} - {(await self.bot.fetch_user(candidate[1])).display_name}\n'
+                    if candidate[1] == 42:
+                        output_str += f' - {candidate[0]}\n'
+                    else:
+                        output_str += f' - {candidate[0]} - {(await self.bot.fetch_user(candidate[1])).display_name}\n'
                 output_str += '--------\n'
             else:
                 output_str = ('Looks like that post isn\'t in this election, '
@@ -68,7 +71,10 @@ class Info(commands.Cog):
                 random.shuffle(candidates)
                 output_str += f'Candidates standing for {post}:\n'
                 for candidate in candidates:
-                    output_str += f' - {candidate} - {(await self.bot.fetch_user(candidate[1])).display_name}\n'
+                    if candidate[1] == 42:
+                        output_str += f' - {candidate[0]}\n'
+                    else:
+                        output_str += f' - {candidate[0]} - {(await self.bot.fetch_user(candidate[1])).display_name}\n'
                 output_str += '--------\n'
 
         if output_str:
