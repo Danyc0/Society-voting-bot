@@ -15,7 +15,7 @@ def committee_channel_check():
 
 def voting_channel_check():
     def predicate(context):
-        return context.channel.id != int(os.getenv('VOTING_CHANNEL_ID')) and not isinstance(context.channel, DMChannel)
+        return context.channel.id == int(os.getenv('VOTING_CHANNEL_ID')) or isinstance(context.channel, DMChannel)
     return commands.check(predicate)
 
 
