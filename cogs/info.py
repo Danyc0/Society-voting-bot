@@ -109,8 +109,8 @@ class Info(commands.Cog):
             return True
 
     async def voting_channel_error(self, context, error):
-        if isinstance(error, commands.errors.NoPrivateMessage) or isinstance(error, commands.errors.CheckFailure):
-            await context.send('Please only run this command in public, non-voting channels')
+        if isinstance(error, commands.errors.CheckFailure):
+            await context.send('Please only run this command in DMs, or in the voting channel')
             return True
 
     @posts.error
