@@ -21,5 +21,8 @@ def voting_channel_check():
 
 def committee_member_check():
     def predicate(context):
-        return int(os.getenv('COMMITTEE_ROLE_ID')) in [role.id for role in context.author.roles]
+        if isinstance(context.channel, DMChannel):
+            return False
+        else:
+            return int(os.getenv('COMMITTEE_ROLE_ID')) in [role.id for role in context.author.roles]
     return commands.check(predicate)
