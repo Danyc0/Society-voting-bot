@@ -64,6 +64,10 @@ class Voting(commands.Cog):
             await context.send('Your vote was not cast, please correct your ballot and resubmit')
             return
 
+        if not len(helpers.voted):
+            await context.send('Voting has now closed, please try again later for the next vote')
+            return
+
         async with helpers.voted_lock:
             if author in helpers.voted:
                 await context.send('You have already cast your vote and it cannot be changed')
