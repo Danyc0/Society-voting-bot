@@ -110,7 +110,7 @@ class Info(commands.Cog):
 
     async def voting_channel_error(self, context, error):
         if isinstance(error, commands.errors.CheckFailure):
-            await context.send('Please only run this command in DMs, or in a voting channel')
+            await context.send('Please only run this command in DMs, or in the voting channel')
             return True
 
     @posts.error
