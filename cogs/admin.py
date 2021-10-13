@@ -58,7 +58,7 @@ class Admin(commands.Cog):
 
     @commands.command(name='begin', help='Begins the election for the specified post/referendum - Committee Only. '
                                     f'Usage: {helpers.PREFIX}begin <POST/TITLE>', usage='<POST/TITLE>')
-    @checkers.voting_channel_check()
+    @checkers.voting_channel_only()
     @checkers.committee_member_check()
     async def begin(self, context, *post):
         post = ' '.join(post)
@@ -134,7 +134,7 @@ class Admin(commands.Cog):
                                'in your DMs')
             
     @commands.command(name='end', help=f'Ends the election for the currently live post - Committee Only. Usage: {helpers.PREFIX}end')
-    @checkers.voting_channel_check()
+    @checkers.voting_channel_only()
     @checkers.committee_member_check()
     async def end(self, context):
         voting_channel = await self.bot.fetch_channel(helpers.VOTING_CHANNEL_ID)
@@ -294,6 +294,11 @@ class Admin(commands.Cog):
             await context.send('This command is for committee only, please run in the designated committee channel')
             return True
 
+    async def voting_channel_error(self, context, error):
+        if isinstance(error, commands.errors.NoPrivateMessage) or isinstance(error, commands.errors.CheckFailure):
+            await context.send('This command is for committee only, please run in the designated voting channel')
+            return True
+
     @referendum.error
     async def referendum_error(self, context, error):
         if not await self.committee_channel_error(context, error):
@@ -308,14 +313,14 @@ class Admin(commands.Cog):
 
     @begin.error
     async def begin_error(self, context, error):
-        if not await self.committee_channel_error(context, error):
+        if not await self.voting_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send('Must supply the post/referendum title you are starting the vote for, usage:'
                                     f'`{helpers.PREFIX}begin <POST/TITLE>`')
 
     @end.error
     async def end_error(self, context, error):
-        await self.committee_channel_error(context, error)
+        await self.voting_channel_error(context, error)
 
     @rename.error
     async def rename_error(self, context, error):

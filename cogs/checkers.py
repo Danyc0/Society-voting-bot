@@ -19,6 +19,12 @@ def voting_channel_check():
     return commands.check(predicate)
 
 
+def voting_channel_only():
+    def predicate(context):
+        return context.channel.id == int(os.getenv('VOTING_CHANNEL_ID'))
+    return commands.check(predicate)
+
+
 def committee_member_check():
     def predicate(context):
         if isinstance(context.channel, DMChannel):
