@@ -188,6 +188,7 @@ random.seed(time.time())
 load_dotenv()
 COMMITTEE_CHANNEL_ID = int(os.getenv('COMMITTEE_CHANNEL_ID'))
 VOTING_CHANNEL_ID = int(os.getenv('VOTING_CHANNEL_ID'))
+COMMITTEE_ROLE_ID = os.getenv('COMMITTEE_ROLE_ID')
 
 VOTERS_FILE = os.getenv('VOTERS_FILE')
 STANDING_FILE = os.getenv('STANDING_FILE')
@@ -196,7 +197,6 @@ NAMES_FILE = os.getenv('NAMES_FILE')
 
 SHEET_ID = os.getenv('SHEET_ID')
 
-COMMITTEE_ROLE = os.getenv('COMMITTEE_ROLE')
 SECRETARY_NAME = os.getenv('SECRETARY_NAME')
 SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
 

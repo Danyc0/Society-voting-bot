@@ -12,6 +12,7 @@ You'll need to set seven environment variables:
 * DISCORD TOKEN -> The Discord token for the bot you created (available on your bot page in the developer portal).
 * COMMITTEE_CHANNEL_ID -> The Discord channel ID for the committee channel, this is where you setup new posts, get the members list and see results. This should be a channel only available to committee members.
 * VOTING_CHANNEL_ID -> The Discord channel ID for the voting channel, this is where elections are started by committee members. This should be a channel only available to members.
+* COMMITTEE_ROLE_ID -> The role ID for committee members (who are the only people who can start/end voting)
 
 * UNION_URL -> The URL of the Students Union/Guild of Students members page (make sure it's listed by group).
 * UNION_COOKIE -> Your Students Union/Guild of Students session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Students Union/Guild of Students website. You must be a committee member).
@@ -23,7 +24,6 @@ You'll need to set seven environment variables:
 
 * SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
 
-* COMMITTEE_ROLE -> The role name for committee members (who are the only people who can start/end voting)
 * SECRETARY_NAME -> The name of the current secretary.
 * SECRETARY_EMAIL -> The email address of the secretary. This is needed in case a candidate cannot make the live election call, and to notify the secretary of new candidates.
 
