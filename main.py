@@ -51,10 +51,6 @@ async def on_ready():
 
 
 @bot.event
-async def on_message(message):
-    await bot.process_commands(message)
-
-@bot.event
 async def on_command_error(context, error):
     if isinstance(error, commands.errors.CommandNotFound):
         await context.channel.send(f'I couldn\'t find that command, please use {PREFIX}help for a list of commands.')
