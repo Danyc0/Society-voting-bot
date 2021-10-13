@@ -138,7 +138,7 @@ class Admin(commands.Cog):
     @checkers.committee_member_check()
     async def end(self, context):
         voting_channel = await self.bot.fetch_channel(helpers.VOTING_CHANNEL_ID)
-        committee_channel = await self.bot.fetch_chhanel(helpers.COMMITTEE_CHANNEL_ID)
+        committee_channel = await self.bot.fetch_channel(helpers.COMMITTEE_CHANNEL_ID)
     
         last_live_post = helpers.current_live_post
         async with helpers.current_live_post_lock.writer_lock:
