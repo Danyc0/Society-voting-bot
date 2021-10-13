@@ -83,7 +83,7 @@ class Admin(commands.Cog):
                 return
             post = matching_posts[0]
 
-            current_live_post = (type, post)
+            helpers.current_live_post = (type, post)
         helpers.log(f'Voting has now begun for: {post}')
 
         if type == 'POST':
