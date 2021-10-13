@@ -151,7 +151,7 @@ class Admin(commands.Cog):
     
         async with helpers.votes_lock.writer_lock:
             if last_live_post[0] == 'POST':
-                results = pyrankvote.instant_runoff_voting([i for i, _ in helpers.standing[last_live_post[1]].values()],
+                results = pyrankvote.instant_runoff_voting([i for i, _, _ in helpers.standing[last_live_post[1]].values()],
                                                            helpers.votes)
             else:
                 results = pyrankvote.instant_runoff_voting(helpers.referendum_options, helpers.votes)
