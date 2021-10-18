@@ -148,14 +148,17 @@ class Running(commands.Cog):
 
     @stand.error
     async def stand_error(self, context, error):
+        helpers.log(error)
         await self.dm_error(context, error)
 
     @standdown.error
     async def standdown_error(self, context, error):
+        helpers.log(error)
         await self.dm_error(context, error)
 
     @changename.error
     async def changename_error(self, context, error):
+        helpers.log(error)
         await self.dm_error(context, error)
 
 

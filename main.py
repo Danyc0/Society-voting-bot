@@ -1,4 +1,5 @@
 import os
+from cogs import helpers
 import time
 import datetime
 import random
@@ -53,6 +54,7 @@ async def on_ready():
 @bot.event
 async def on_command_error(context, error):
     if isinstance(error, commands.errors.CommandNotFound):
+        helpers.log(error)
         await context.channel.send(f'I couldn\'t find that command, please use {PREFIX}help for a list of commands.')
 
 

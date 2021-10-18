@@ -115,22 +115,27 @@ class Info(commands.Cog):
 
     @posts.error
     async def posts_error(self, context, error):
+        helpers.log(error)
         await self.voting_channel_error(context, error)
 
     @list_referenda.error
     async def list_referenda_error(self, context, error):
+        helpers.log(error)
         await self.voting_channel_error(context, error)
 
     @list_candidates.error
     async def list_candidates_error(self, context, error):
+        helpers.log(error)
         await self.voting_channel_error(context, error)
 
     @rules.error
     async def rules_error(self, context, error):
+        helpers.log(error)
         await self.voting_channel_error(context, error)
 
     @members.error
     async def members_error(self, context, error):
+        helpers.log(error)
         await self.committee_channel_error(context, error)
 
 
