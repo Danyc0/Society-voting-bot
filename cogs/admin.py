@@ -3,6 +3,7 @@
 import random
 import asyncio
 import pyrankvote
+import traceback
 
 from pyrankvote import Candidate
 
@@ -323,26 +324,26 @@ class Admin(commands.Cog):
 
     @end.error
     async def end_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         await self.voting_channel_error(context, error)
 
     @rename.error
     async def rename_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.committee_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send(f'You must supply a post and the new name. Usage: `{helpers.PREFIX}rename <OLD_POST> <NEW_POST>`')
 
     @delete.error
     async def delete_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.committee_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send(f'You must supply a post to delete. Usage: `{helpers.PREFIX}delete <POST>`')
 
     @takedown.error
     async def takedown_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.committee_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send(f'You must supply a student ID and post to standdown a user. Usage: `{helpers.PREFIX}takedown <STUDENT_NUMBER> <POST>`')
@@ -351,7 +352,7 @@ class Admin(commands.Cog):
 
     @resetname.error
     async def resetname_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.committee_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument) or isinstance(error, commands.errors.BadArgument):
                 await context.send(f'You must supply a student ID. Usage: `{helpers.PREFIX}resetname <STUDENT NUMBER>`')

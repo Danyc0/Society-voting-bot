@@ -1,5 +1,7 @@
 # A Cog for running, and managing your run, in elections #
 
+import traceback
+
 from pyrankvote import Candidate
 
 from discord.ext import commands
@@ -148,17 +150,17 @@ class Running(commands.Cog):
 
     @stand.error
     async def stand_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         await self.dm_error(context, error)
 
     @standdown.error
     async def standdown_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         await self.dm_error(context, error)
 
     @changename.error
     async def changename_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         await self.dm_error(context, error)
 
 

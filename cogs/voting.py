@@ -1,5 +1,7 @@
 # A Cog for commands to register and vote in elections #
 
+import traceback
+
 from pyrankvote import Ballot
 
 from discord.ext import commands
@@ -189,21 +191,21 @@ class Voting(commands.Cog):
 
     @register.error
     async def register_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.dm_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send(f'Must supply a student number. Usage: {helpers.PREFIX}register <STUDENT NUMBER>')
 
     @submit.error
     async def submit_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.dm_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send(f'You must supply the code given out in the election call, your vote was not cast. Usage: {helpers.PREFIX}submit <VOTING CODE>')
 
     @validate.error
     async def validate_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         await self.dm_error(context, error)
 
 def setup(bot):
