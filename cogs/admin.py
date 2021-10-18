@@ -302,21 +302,21 @@ class Admin(commands.Cog):
 
     @referendum.error
     async def referendum_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.committee_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send(f'Must supply a name and description for the new referendum. Usage: `{helpers.PREFIX}referendum <TITLE> <DESCRIPTION>`')
 
     @setup.error
     async def setup_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.committee_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send(f'Must supply a name for the new post. Usage: `{helpers.PREFIX}setup <NEW_POST>`')
 
     @begin.error
     async def begin_error(self, context, error):
-        helpers.log(error)
+        traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.voting_channel_error(context, error):
             if isinstance(error, commands.errors.MissingRequiredArgument):
                 await context.send('Must supply the post/referendum title you are starting the vote for, usage:'
