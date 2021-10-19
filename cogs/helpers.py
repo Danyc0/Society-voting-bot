@@ -145,7 +145,7 @@ def save_referenda():
 
 
 def log(output_str):
-    print(datetime.datetime.now().strftime('%d/%m/%y %H:%M:%S: ') + output_str)
+    print(datetime.datetime.now().strftime('%d/%m/%y %H:%M:%S:'), output_str)
 
 
 def match_post(post):
