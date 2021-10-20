@@ -39,8 +39,8 @@ class Voting(commands.Cog):
             else:
                 helpers.registered_members[author] = student_number
                 output_str = (f'Thank you {members[helpers.registered_members[author]]}, you are now registered. '
-                              'If you\'d like to change the name used by the bot and displayed on the ballot paper, '
-                              f'use `{helpers.PREFIX}changename <NAME>`\n\n{helpers.RULES_STRING}')
+                              'If you\'d like to change the name used by the bot, use '
+                              f'`{helpers.PREFIX}changename <NAME>`\n\n{helpers.RULES_STRING}')
                 helpers.log(f'{helpers.registered_members[author]} is now registered ({len(helpers.registered_members)} total)')
         else:
             output_str = f'Looks like you\'re not a member yet, please become a member here: {helpers.JOIN_LINK}'
