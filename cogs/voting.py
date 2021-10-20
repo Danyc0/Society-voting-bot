@@ -195,14 +195,14 @@ class Voting(commands.Cog):
     async def register_error(self, context, error):
         traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.dm_error(context, error):
-            if isinstance(error, commands.errors.MissingRequiredArgument):
+            if isinstance(error, commands.errors.MissingRequiredArgument) or isinstance(error, commands.errors.BadArgument):
                 await context.send(f'Must supply a student number. Usage: {helpers.PREFIX}register <STUDENT NUMBER>')
 
     @submit.error
     async def submit_error(self, context, error):
         traceback.print_exception(type(error), error, error.__traceback__)
         if not await self.dm_error(context, error):
-            if isinstance(error, commands.errors.MissingRequiredArgument):
+            if isinstance(error, commands.errors.MissingRequiredArgument) or isinstance(error, commands.errors.BadArgument):
                 await context.send(f'You must supply the code given out in the election call, your vote was not cast. Usage: {helpers.PREFIX}submit <VOTING CODE>')
 
     @validate.error
