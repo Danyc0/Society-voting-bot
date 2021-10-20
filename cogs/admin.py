@@ -88,25 +88,7 @@ class Admin(commands.Cog):
         helpers.log(f'Voting has now begun for: {post}')
 
         if type == 'POST':
-            num_candidates = len(helpers.standing[post])
-            max_react = list(helpers.EMOJI_LOOKUP)[num_candidates-1]
-
-            for voter in helpers.registered_members:
-                user = await self.bot.fetch_user(voter)
-                await user.send(f'Ballot paper for: {post}, there are {num_candidates} candidates. '
-                                f'(Please react to the messages below with :one:-{max_react}). '
-                                f'**Don\'t forget to **`{helpers.PREFIX}submit <CODE>`** when you\'re done**:\n')
-                # Make sure the header arrives before the ballot paper
-                await asyncio.sleep(0.2)
-
-                # Message the member with the shuffled candidate list, each in a separate message, record the message ID
-                candidates = list(helpers.standing[post].items())
-                random.shuffle(candidates)
-                helpers.voting_messages[user.id] = []
-                for student_id, details in candidates:
-                    message = await user.send(f' - {str(details[0])}')
-                    # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
-                    helpers.voting_messages[user.id].append((student_id, message.id))
+            await self.distribute_all_post_ballots(post)
 
             await context.send(f'Voting has now begun for: {post}\n'
                                'All registered voters will have just received a message from me. '
@@ -114,26 +96,61 @@ class Admin(commands.Cog):
                                ':one: is your top candidate, :two: is your second top candidate, etc. '
                                'You do not need to put a ranking in for every candidate')
         else:
-            for voter in helpers.registered_members:
-                user = await self.bot.fetch_user(voter)
-                await user.send(f'Ballot paper for: {post}. Please react to the message for your choice below with '
-                                ':ballot_box_with_check: (\\:ballot_box_with_check\\:). '
-                                f'**Don\'t forget to **`{helpers.PREFIX}submit <CODE>`** when you\'re done**:\n')
-                # Make sure the header arrives before the ballot paper
-                await asyncio.sleep(0.2)
-
-                # Message the member with the options list, each in a separate message, record the ID of the message
-                helpers.voting_messages[user.id] = []
-                for option in helpers.referendum_options:
-                    message = await user.send(f' - {str(option)}')
-                    # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
-                    helpers.voting_messages[user.id].append((option, message.id))
+            await self.distribute_all_referenda_ballots(post)
 
             await context.send(f'Voting has now begun for: {post}\n'
                                'All registered voters will have just received a message from me. Please vote by '
                                'reacting :ballot_box_with_check: to either the \'For\' or \'Against\' message '
                                'in your DMs')
-            
+
+
+    async def distribute_all_post_ballots(self, post):
+            num_candidates = len(helpers.standing[post])
+            max_react = list(helpers.EMOJI_LOOKUP)[num_candidates-1]
+
+            for voter in helpers.registered_members:
+                self.bot.loop.create_task(self.distribute_post_ballot(voter, post, num_candidates, max_react))
+
+
+    async def distribute_post_ballot(self, voter, post, num_candidates, max_react):
+        user = await self.bot.fetch_user(voter)
+        await user.send(f'Ballot paper for: {post}, there are {num_candidates} candidates. '
+                        f'(Please react to the messages below with :one:-{max_react}). '
+                        f'**Don\'t forget to **`{helpers.PREFIX}submit <CODE>`** when you\'re done**:\n')
+        # Make sure the header arrives before the ballot paper
+        await asyncio.sleep(0.2)
+
+        # Message the member with the shuffled candidate list, each in a separate message, record the message ID
+        candidates = list(helpers.standing[post].items())
+        random.shuffle(candidates)
+        helpers.voting_messages[user.id] = []
+        for student_id, details in candidates:
+            message = await user.send(f' - {str(details[0])}')
+            # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
+            helpers.voting_messages[user.id].append((student_id, message.id))
+
+
+    async def distribute_all_referenda_ballots(self, post):
+            for voter in helpers.registered_members:
+                self.bot.loop.create_task(self.distribute_referenda_ballot(voter, post))
+
+
+    async def distribute_referenda_ballot(self, voter, post):
+        user = await self.bot.fetch_user(voter)
+        await user.send(f'Ballot paper for: {post}. Please react to the message for your choice below with '
+                        ':ballot_box_with_check: (\\:ballot_box_with_check\\:). '
+                        f'**Don\'t forget to **`{helpers.PREFIX}submit <CODE>`** when you\'re done**:\n')
+        # Make sure the header arrives before the ballot paper
+        await asyncio.sleep(0.2)
+
+        # Message the member with the options list, each in a separate message, record the ID of the message
+        helpers.voting_messages[user.id] = []
+        for option in helpers.referendum_options:
+            message = await user.send(f' - {str(option)}')
+            # Need to store A. the user it was sent to, B. Which candidate is in the message, C. The message ID
+            helpers.voting_messages[user.id].append((option, message.id))
+
+
     @commands.command(name='end', help=f'Ends the election for the currently live post - Committee Only. Usage: {helpers.PREFIX}end')
     @checkers.voting_channel_only()
     @checkers.committee_member_check()
