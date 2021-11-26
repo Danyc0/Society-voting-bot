@@ -9,7 +9,7 @@ A Discord bot for doing society elections. The voting system used is Instant Run
 You'll need to create a discord bot of your own in the [Discord Developer Portal](https://discord.com/developers/applications) with View Channels and Read Messages permissions. It's also handy if you have an empty server (or "guild") for you to test in. This section of [this guide](https://realpython.com/how-to-make-a-discord-bot-python/#how-to-make-a-discord-bot-in-the-developer-portal) may be helpful to set that up.
 
 You'll need to set seven environment variables:
-* DISCORD TOKEN -> The Discord token for the bot you created (available on your bot page in the developer portal).
+* DISCORD_TOKEN -> The Discord token for the bot you created (available on your bot page in the developer portal).
 * COMMITTEE_CHANNEL_ID -> The Discord channel ID for the committee channel, this is where you setup new posts, get the members list and see results. This should be a channel only available to committee members.
 * VOTING_CHANNEL_ID -> The Discord channel ID for the voting channel, this is where elections are started by committee members. This should be a channel only available to members.
 * COMMITTEE_ROLE_ID -> The role ID for committee members (who are the only people who can start/end voting)
