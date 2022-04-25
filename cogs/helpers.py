@@ -124,19 +124,20 @@ def save_standing():
     with open(STANDING_FILE, 'wb') as out_file:
         pickle.dump(standing, out_file)
 
-    service.spreadsheets().values().clear(spreadsheetId=SHEET_ID, range='A2:D100').execute()
-    values = []
-    for post, candidates in standing.items():
-        for student_id, candidate in candidates.items():
-            if student_id == 0:
-                continue
-            values.append([str(candidate[0]), candidate[1], str(student_id), post])
+    if not os.getenv('SMTP_SERVER') == 'NONE':
+        service.spreadsheets().values().clear(spreadsheetId=SHEET_ID, range='A2:D100').execute()
+        values = []
+        for post, candidates in standing.items():
+            for student_id, candidate in candidates.items():
+                if student_id == 0:
+                    continue
+                values.append([str(candidate[0]), candidate[1], str(student_id), post])
 
-    body = {
-        'values': values
-    }
-    service.spreadsheets().values().update(spreadsheetId=SHEET_ID, range='A2',
-                                           valueInputOption='RAW', body=body).execute()
+        body = {
+            'values': values
+        }
+        service.spreadsheets().values().update(spreadsheetId=SHEET_ID, range='A2',
+                                               valueInputOption='RAW', body=body).execute()
 
 
 def save_referenda():
@@ -157,30 +158,31 @@ def match_referendum(referendum):
 
 
 def email_secretary(candidate, post, stood_down=False):
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+    if not os.getenv('SMTP_SERVER') == 'NONE':
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
 
-        message = MIMEMultipart('alternative')
-        message['From'] = SENDER_EMAIL
-        message['To'] = SECRETARY_EMAIL
+            message = MIMEMultipart('alternative')
+            message['From'] = SENDER_EMAIL
+            message['To'] = SECRETARY_EMAIL
 
-        if not stood_down:
-            message['Subject'] = 'New candidate standing in the upcoming election'
-            text = ('Hello,\n'
-                    f'{candidate} has just stood for the position of {post} '
-                    'in the upcoming election,\n'
-                    'Goodbye')
-        else:
-            message['Subject'] = 'Candidate no longer standing in the upcoming election'
-            text = ('Hello,\n'
-                    f'{candidate} has just stood down from standing for the position of {post} '
-                    'in the upcoming election,\n'
-                    'Goodbye')
+            if not stood_down:
+                message['Subject'] = 'New candidate standing in the upcoming election'
+                text = ('Hello,\n'
+                        f'{candidate} has just stood for the position of {post} '
+                        'in the upcoming election,\n'
+                        'Goodbye')
+            else:
+                message['Subject'] = 'Candidate no longer standing in the upcoming election'
+                text = ('Hello,\n'
+                        f'{candidate} has just stood down from standing for the position of {post} '
+                        'in the upcoming election,\n'
+                        'Goodbye')
 
-        # Turn the message text into a MIMEText object and add it to the MIMEMultipart message
-        message.attach(MIMEText(text, 'plain'))
-        server.sendmail(SENDER_EMAIL, SECRETARY_EMAIL, message.as_string())
+            # Turn the message text into a MIMEText object and add it to the MIMEMultipart message
+            message.attach(MIMEText(text, 'plain'))
+            server.sendmail(SENDER_EMAIL, SECRETARY_EMAIL, message.as_string())
 
 
 random.seed(time.time())
@@ -202,10 +204,11 @@ SECRETARY_EMAIL = os.getenv('SECRETARY_EMAIL')
 
 JOIN_LINK = os.getenv('JOIN_LINK')
 
-SMTP_SERVER = os.getenv('SMTP_SERVER')
-SMTP_PORT = int(os.getenv('SMTP_PORT'))
-SENDER_EMAIL = os.getenv('SENDER_EMAIL')
-SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
+if not os.getenv('SMTP_SERVER') == 'NONE':
+    SMTP_SERVER = os.getenv('SMTP_SERVER')
+    SMTP_PORT = int(os.getenv('SMTP_PORT'))
+    SENDER_EMAIL = os.getenv('SENDER_EMAIL')
+    SENDER_PASSWORD = os.getenv('SENDER_PASSWORD')
 
 VOTING_CODE = os.getenv('VOTING_CODE').upper()
 
@@ -231,7 +234,8 @@ try:
 except IOError:
     log(f'No preferred_names file: {NAMES_FILE}')
 
-# Read in the Google Sheets API token
-creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
-# Connect to the sheets API
-service = build('sheets', 'v4', credentials=creds)
+if not os.getenv('SMTP_SERVER') == 'NONE':
+    # Read in the Google Sheets API token
+    creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
+    # Connect to the sheets API
+    service = build('sheets', 'v4', credentials=creds)

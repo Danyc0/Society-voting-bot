@@ -54,7 +54,7 @@ class Running(commands.Cog):
             output_str = 'Error'
             if author in helpers.registered_members:
                 if [i for i in helpers.standing[post] if i == helpers.registered_members[author]]:
-                    output_str = (f'It looks like you, {members[helpers.registered_members[author]]} are already '
+                    output_str = (f'It looks like you, {members[helpers.registered_members[author]]}, are already '
                                   f'standing for the position of: {post}')
                 else:
                     helpers.standing[post][helpers.registered_members[author]] = (Candidate(members[helpers.registered_members[author]]), email, author)
