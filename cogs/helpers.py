@@ -124,7 +124,7 @@ def save_standing():
     with open(STANDING_FILE, 'wb') as out_file:
         pickle.dump(standing, out_file)
 
-    if not os.getenv('SMTP_SERVER') == 'NONE':
+    if not os.getenv('SHEET_ID') == 'NONE':
         service.spreadsheets().values().clear(spreadsheetId=SHEET_ID, range='A2:D100').execute()
         values = []
         for post, candidates in standing.items():
@@ -234,7 +234,7 @@ try:
 except IOError:
     log(f'No preferred_names file: {NAMES_FILE}')
 
-if not os.getenv('SMTP_SERVER') == 'NONE':
+if not os.getenv('SHEET_ID') == 'NONE':
     # Read in the Google Sheets API token
     creds = Credentials.from_authorized_user_file('token.json', GOOGLE_SCOPES)
     # Connect to the sheets API
