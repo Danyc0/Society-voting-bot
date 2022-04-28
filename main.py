@@ -46,7 +46,7 @@ bot = commands.Bot(command_prefix=PREFIX)
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user.name} has connected to Discord and is in the following channels:')
+    print(f'{bot.user.name} has connected to Discord and is in the following guilds:')
     for guild in bot.guilds:
         print(' -', guild.name)
 
