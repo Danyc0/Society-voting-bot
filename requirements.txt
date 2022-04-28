@@ -1,0 +1,6 @@
+aiorwlock==1.2.*
+discord.py==1.7.3
+google-api-python-client==2.45.0
+pyrankvote==2.0.3
+python-dotenv==0.20.0
+requests==2.27.1
