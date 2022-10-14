@@ -140,5 +140,5 @@ class Info(commands.Cog):
         await self.committee_channel_error(context, error)
 
 
-def setup(bot):
-    bot.add_cog(Info(bot))
+async def setup(bot):
+    await bot.add_cog(Info(bot))

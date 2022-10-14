@@ -210,5 +210,5 @@ class Voting(commands.Cog):
         traceback.print_exception(type(error), error, error.__traceback__)
         await self.dm_error(context, error)
 
-def setup(bot):
-    bot.add_cog(Voting(bot))
+async def setup(bot):
+    await bot.add_cog(Voting(bot))

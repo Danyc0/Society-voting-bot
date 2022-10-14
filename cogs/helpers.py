@@ -95,9 +95,13 @@ preferred_names = {}
 # Format = {<User ID>: [(<Candidate Student ID>, <Message ID>), ...], ...}
 voting_messages = {}
 
-current_live_post_lock = aiorwlock.RWLock()
-votes_lock = aiorwlock.RWLock()
-voted_lock = asyncio.Lock()
+def init_helpers():
+    global current_live_post_lock
+    global votes_lock
+    global voted_lock
+    current_live_post_lock = aiorwlock.RWLock()
+    votes_lock = aiorwlock.RWLock()
+    voted_lock = asyncio.Lock()
 
 def get_members():
     members = society_members.get_members()

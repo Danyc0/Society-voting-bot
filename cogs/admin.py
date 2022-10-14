@@ -375,5 +375,5 @@ class Admin(commands.Cog):
                 await context.send(f'You must supply a student ID. Usage: `{helpers.PREFIX}resetname <STUDENT NUMBER>`')
 
 
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))

@@ -164,5 +164,5 @@ class Running(commands.Cog):
         await self.dm_error(context, error)
 
 
-def setup(bot):
-    bot.add_cog(Running(bot))
+async def setup(bot):
+    await bot.add_cog(Running(bot))
