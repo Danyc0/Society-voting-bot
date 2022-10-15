@@ -45,6 +45,10 @@ class Admin(commands.Cog):
     @checkers.committee_channel_check()
     async def setup(self, context, *post):
         post = ' '.join(post)
+        if not post:
+            await context.send('You must supply a post name to create')
+            return
+
         matching_posts = helpers.match_post(post)
         if matching_posts:
             await context.send(f'{post} already exists')
