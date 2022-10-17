@@ -5,7 +5,7 @@ import traceback
 from pyrankvote import Candidate
 
 from discord.ext import commands
-from cogs import helpers
+from utils import helpers
 
 
 class Running(commands.Cog):

@@ -13,7 +13,7 @@ import aiorwlock
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 
-from cogs import society_members
+from utils import society_members
 
 import pyrankvote
 from pyrankvote import Candidate, Ballot

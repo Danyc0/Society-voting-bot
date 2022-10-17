@@ -4,7 +4,7 @@ import random
 import traceback
 
 from discord.ext import commands
-from cogs import helpers, checkers
+from utils import helpers, checkers
 
 class Info(commands.Cog):
     # Initialisation #

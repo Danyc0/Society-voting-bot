@@ -5,7 +5,7 @@ import traceback
 from pyrankvote import Ballot
 
 from discord.ext import commands
-from cogs import helpers
+from utils import helpers
 
 
 class Voting(commands.Cog):

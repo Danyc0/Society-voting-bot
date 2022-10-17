@@ -8,7 +8,7 @@ import traceback
 from pyrankvote import Candidate
 
 from discord.ext import commands
-from cogs import helpers, checkers
+from utils import helpers, checkers
 
 
 class Admin(commands.Cog):

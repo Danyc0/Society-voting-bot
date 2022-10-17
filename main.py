@@ -1,5 +1,4 @@
 import os
-from cogs import helpers
 import time
 import datetime
 import random
@@ -18,7 +17,7 @@ from discord.ext import commands
 from discord.channel import DMChannel
 from discord import Intents
 
-from cogs import society_members
+from utils import helpers, society_members
 
 # Workflow
 # See current members:   \members
