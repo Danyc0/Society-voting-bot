@@ -197,7 +197,7 @@ class Admin(commands.Cog):
         for voter in helpers.registered_members:
             user = await self.bot.fetch_user(voter)
             await user.send(f'Voting has now ended for: {last_live_post[1]}')
-        
+
     # Additional Commands for editing elections #
 
     @commands.command(name='rename', help='Renames the specified post. '
@@ -217,20 +217,28 @@ class Admin(commands.Cog):
         helpers.log(f'The post of {matching_posts[0]} has been renamed to {new_post}')
         await context.send(f'The post of {matching_posts[0]} has been renamed to {new_post}')
 
-    @commands.command(name='delete', help='Deletes the specified post. '
+
+    @commands.command(name='delete', help='Deletes the specified post/referendum. '
                                      'Note that both post names MUST be passed within quotes - Committee Only. '
-                                     f'Usage: {helpers.PREFIX}delete <POST>', usage='<POST>')
+                                     f'Usage: {helpers.PREFIX}delete <POST/TITLE>', usage='<POST/TITLE>')
     @checkers.private_admin_check()
-    async def delete(self, context, *, post):
+    async def delete(self, context, item):
+        matching_posts = helpers.match_post(item)
+        if not matching_posts:
+            matching_referenda = helpers.match_referendum(item)
+            if not  matching_referenda:
+                await context.send(f'{item} doesn\'t exist')
+                return
+            referendum = matching_referenda[0]
+            await self.delete_referendum(context, referendum)
+            return
+        post = matching_posts[0]
+        await self.delete_post(context, post)
+
+
+    async def delete_post(self, context, post):
         def check(msg):
             return msg.author == context.author and msg.channel == context.channel
-
-        matching_posts = helpers.match_post(post)
-        if not matching_posts:
-            await context.send(f'{post} doesn\'t exist')
-            return
-
-        post = matching_posts[0]
 
         if helpers.standing[post].items():
             if not (len(helpers.standing[post]) == 1 and helpers.standing[post][0]):
@@ -248,6 +256,13 @@ class Admin(commands.Cog):
         helpers.standing.pop(post)
         await context.send(f'{post} deleted')
         return
+
+
+    async def delete_referendum(self, context, referendum):
+        helpers.referenda.pop(referendum)
+        await context.send(f'{referendum} deleted')
+        return
+
 
     @commands.command(name='takedown', help='Stands a specific user down on their behalf - Committee Only. '
                                        f'Usage: {helpers.PREFIX}takedown <STUDENT ID> <POST>', usage='<STUDENT ID> <POST>')
