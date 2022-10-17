@@ -15,7 +15,7 @@ class Info(commands.Cog):
     # Commands for Initialising Elections #
 
     @commands.command(name='posts', help=f'Prints the posts available to stand for in this election. Usage: {helpers.PREFIX}posts')
-    @checkers.voting_channel_check()
+    @checkers.public_check()
     async def posts(self, context):
         if helpers.standing:
             output_str = '```\n'
@@ -27,7 +27,7 @@ class Info(commands.Cog):
         await context.send(output_str)
 
     @commands.command(name='referenda', help=f'Prints the referenda to be voted on in this election. Usage: {helpers.PREFIX}referenda')
-    @checkers.voting_channel_check()
+    @checkers.public_check()
     async def list_referenda(self, context):
         if helpers.referenda:
             output_str = '```\n'
@@ -41,7 +41,7 @@ class Info(commands.Cog):
     @commands.command(name='candidates',
                  help='Prints the candidates for the specified post (or all posts if no post is given). '
                       f'Usage: {helpers.PREFIX}candidates [POST]', usage='[POST]')
-    @checkers.voting_channel_check()
+    @checkers.public_check()
     async def list_candidates(self, context, *post):
         if not helpers.standing:
             await context.send('There are currently no posts set up in this election')
@@ -82,13 +82,13 @@ class Info(commands.Cog):
             await context.send(output_str)
 
     @commands.command(name='rules', help=f'Prints the rules and procedures for the election. Usage: {helpers.PREFIX}rules')
-    @checkers.voting_channel_check()
+    @checkers.public_check()
     async def rules(self, context):
         await context.send(f'To register to vote, DM me with `{helpers.PREFIX}register <STUDENT NUMBER>` '
                            f'(without the \'<>\')\n{helpers.RULES_STRING}')
 
     @commands.command(name='members', help=f'List current members - Committee Only. Usage: {helpers.PREFIX}members')
-    @checkers.committee_channel_check()
+    @checkers.private_admin_check()
     async def members(self, context):
 
         members = helpers.get_members()
