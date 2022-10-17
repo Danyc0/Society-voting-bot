@@ -47,7 +47,7 @@ bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 @bot.event
 async def on_ready():
     helpers.init_helpers()
-    print(f'{bot.user.name} has connected to Discord and is in the following channels:')
+    print(f'{bot.user.name} has connected to Discord and is in the following guilds:')
     for guild in bot.guilds:
         print(' -', guild.name)
 
