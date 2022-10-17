@@ -8,7 +8,7 @@ import traceback
 from pyrankvote import Candidate
 
 from discord.ext import commands
-from cogs import helpers, checkers
+from utils import helpers, checkers
 
 
 class Admin(commands.Cog):
@@ -22,7 +22,7 @@ class Admin(commands.Cog):
     @commands.command(name='referendum', help='Creates the specified referendum. '
                                          'Note that both fields MUST be passed within quotes - Committee Only. '
                                          f'Usage: {helpers.PREFIX}referendum <TITLE> <DESCRIPTION>', usage='<TITLE> <DESCRIPTION>')
-    @checkers.committee_channel_check()
+    @checkers.private_admin_check()
     async def referendum(self, context, title, *description):
         description = ' '.join(description)
         if description.startswith('\''):
@@ -42,9 +42,13 @@ class Admin(commands.Cog):
 
     @commands.command(name='setup', help=f'Creates the specified post - Committee Only. Usage: {helpers.PREFIX}setup <POST>',
                  usage='<POST>')
-    @checkers.committee_channel_check()
+    @checkers.private_admin_check()
     async def setup(self, context, *post):
         post = ' '.join(post)
+        if not post:
+            await context.send('You must supply a post name to create')
+            return
+
         matching_posts = helpers.match_post(post)
         if matching_posts:
             await context.send(f'{post} already exists')
@@ -59,8 +63,7 @@ class Admin(commands.Cog):
 
     @commands.command(name='begin', help='Begins the election for the specified post/referendum - Committee Only. '
                                     f'Usage: {helpers.PREFIX}begin <POST/TITLE>', usage='<POST/TITLE>')
-    @checkers.voting_channel_only()
-    @checkers.committee_member_check()
+    @checkers.public_admin_check()
     async def begin(self, context, *post):
         post = ' '.join(post)
         if not post:
@@ -152,8 +155,7 @@ class Admin(commands.Cog):
 
 
     @commands.command(name='end', help=f'Ends the election for the currently live post - Committee Only. Usage: {helpers.PREFIX}end')
-    @checkers.voting_channel_only()
-    @checkers.committee_member_check()
+    @checkers.public_admin_check()
     async def end(self, context):
         voting_channel = await self.bot.fetch_channel(helpers.VOTING_CHANNEL_ID)
         committee_channel = await self.bot.fetch_channel(helpers.COMMITTEE_CHANNEL_ID)
@@ -201,7 +203,7 @@ class Admin(commands.Cog):
     @commands.command(name='rename', help='Renames the specified post. '
                                      'Note that both post names MUST be passed within quotes - Committee Only. '
                                      f'Usage: {helpers.PREFIX}rename <OLD POST> <NEW POST>', usage='<OLD POST> <NEW POST>')
-    @checkers.committee_channel_check()
+    @checkers.private_admin_check()
     async def rename(self, context, old_post, new_post):
         matching_posts = helpers.match_post(old_post)
         if not matching_posts:
@@ -218,7 +220,7 @@ class Admin(commands.Cog):
     @commands.command(name='delete', help='Deletes the specified post. '
                                      'Note that both post names MUST be passed within quotes - Committee Only. '
                                      f'Usage: {helpers.PREFIX}delete <POST>', usage='<POST>')
-    @checkers.committee_channel_check()
+    @checkers.private_admin_check()
     async def delete(self, context, *, post):
         def check(msg):
             return msg.author == context.author and msg.channel == context.channel
@@ -249,7 +251,7 @@ class Admin(commands.Cog):
 
     @commands.command(name='takedown', help='Stands a specific user down on their behalf - Committee Only. '
                                        f'Usage: {helpers.PREFIX}takedown <STUDENT ID> <POST>', usage='<STUDENT ID> <POST>')
-    @checkers.committee_channel_check()
+    @checkers.private_admin_check()
     async def takedown(self, context, student_id: int, *post):
         post = ' '.join(post)
         if not post:
@@ -278,7 +280,7 @@ class Admin(commands.Cog):
 
     @commands.command(name='resetname', help='Resets the name of the person with a given student number - Committee Only. '
                                         f'Usage: {helpers.PREFIX}resetname <STUDENT NUMBER>', usage='<STUDENT NUMBER>')
-    @checkers.committee_channel_check()
+    @checkers.private_admin_check()
     async def resetname(self, context, student_id: int):
         if student_id not in helpers.preferred_names:
             await context.send('The supplied student ID has not updated their name')
@@ -375,5 +377,5 @@ class Admin(commands.Cog):
                 await context.send(f'You must supply a student ID. Usage: `{helpers.PREFIX}resetname <STUDENT NUMBER>`')
 
 
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))

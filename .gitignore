@@ -2,3 +2,6 @@ env
 .env
 token.json
 TODO
+cogs/__pycache__
+utils/__pycache__
+*.bak

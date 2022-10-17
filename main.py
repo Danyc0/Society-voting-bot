@@ -1,12 +1,9 @@
 import os
-from cogs import helpers
 import time
 import datetime
 import random
 import pickle
 import asyncio
-
-import aiorwlock
 
 from dotenv import load_dotenv
 
@@ -18,8 +15,9 @@ from pyrankvote import Candidate, Ballot
 
 from discord.ext import commands
 from discord.channel import DMChannel
+from discord import Intents
 
-from cogs import society_members
+from utils import helpers, society_members
 
 # Workflow
 # See current members:   \members
@@ -41,15 +39,17 @@ from cogs import society_members
 PREFIX = '\\'
 
 # Create the bot and specify to only look for messages starting with the PREFIX
-bot = commands.Bot(command_prefix=PREFIX)
+intents = Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
 
 @bot.event
 async def on_ready():
+    helpers.init_helpers()
     print(f'{bot.user.name} has connected to Discord and is in the following guilds:')
     for guild in bot.guilds:
         print(' -', guild.name)
-
 
 @bot.event
 async def on_command_error(context, error):
@@ -57,14 +57,16 @@ async def on_command_error(context, error):
         helpers.log(error)
         await context.channel.send(f'I couldn\'t find that command, please use {PREFIX}help for a list of commands.')
 
-
-if __name__ == "__main__":
-
+async def main():
     load_dotenv()
     TOKEN = os.getenv('DISCORD_TOKEN')
+    async with bot:
+        await bot.load_extension('cogs.admin')
+        await bot.load_extension('cogs.info')
+        await bot.load_extension('cogs.running')
+        await bot.load_extension('cogs.voting')
+        await bot.start(TOKEN)
 
-    bot.load_extension('cogs.admin')
-    bot.load_extension('cogs.info')
-    bot.load_extension('cogs.running')
-    bot.load_extension('cogs.voting')
-    bot.run(TOKEN)
+
+if __name__ == "__main__":
+    asyncio.run(main())

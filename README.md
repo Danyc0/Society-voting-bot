@@ -15,18 +15,23 @@ You'll need to set seven environment variables:
 * COMMITTEE_ROLE_ID -> The role ID for committee members (who are the only people who can start/end voting)
 
 * UNION_URL -> The URL of the Students Union/Guild of Students members page (make sure it's listed by group).
-* UNION_COOKIE -> Your Students Union/Guild of Students session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Students Union/Guild of Students website. You must be a committee member).
+* UNION_COOKIE -> Your Students Union/Guild of Students .ASPXAUTH session cookie so the bot has permission to view your members list (You can extract this from your web browser after signing in to the Students Union/Guild of Students website. You must be a committee member).
 
 * VOTERS_FILE -> The file that the registered voter list is backed up to.
 * STANDING_FILE -> The file that the standing candidates list is backed up to.
 * REFERENDA_FILE -> The file that the list of referenda is backed up to.
 * NAMES_FILE -> The file that the list of preferred names is backed up to.
 
-* SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
 
 * SECRETARY_NAME -> The name of the current secretary.
 * SECRETARY_EMAIL -> The email address of the secretary. This is needed in case a candidate cannot make the live election call, and to notify the secretary of new candidates.
 
+* JOIN_LINK -> A link to where to buy society membership.
+
+* ENABLE_SHEET_USAGE -> Enable writing candidates info to a spreadsheet.
+* SHEET_ID -> The ID for the spreadsheet in which to enter details of the standing candidates. This should only be accessible to the committee, or better yet, just the secretary.
+
+* ENABLE_EMAIL_USAGE -> Enable emailing candidates info to the secretary.
 * SMTP_SERVER -> The SMTP server to use when sending emails.
 * SMTP_PORT -> The SMTP port to use when sending emails.
 * SENDER_EMAIL -> The email from which to send emails.

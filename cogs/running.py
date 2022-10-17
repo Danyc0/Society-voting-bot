@@ -5,7 +5,7 @@ import traceback
 from pyrankvote import Candidate
 
 from discord.ext import commands
-from cogs import helpers
+from utils import helpers
 
 
 class Running(commands.Cog):
@@ -164,5 +164,5 @@ class Running(commands.Cog):
         await self.dm_error(context, error)
 
 
-def setup(bot):
-    bot.add_cog(Running(bot))
+async def setup(bot):
+    await bot.add_cog(Running(bot))
