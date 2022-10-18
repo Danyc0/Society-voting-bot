@@ -26,25 +26,26 @@ class Voting(commands.Cog):
         members = helpers.get_members()
 
         output_str = 'Error'
-        if student_number in members:
-            if author in helpers.registered_members:
-                output_str = f'Looks like your Discord username is already registered to {helpers.registered_members[author]}'
-            elif student_number in helpers.registered_members.values():
-                output_str = ('Looks like your student ID is already registered to someone else, '
-                              'please contact a committee member')
-                other_user_id = [key for key, value in helpers.registered_members.items() if value == student_number][0]
-                other_user = await self.bot.fetch_user(other_user_id).name
-                helpers.log(f'{context.author} tried to register student ID {student_number}, '
-                    f'but it\'s already registered to {other_user}')
-            else:
-                helpers.registered_members[author] = student_number
-                output_str = (f'Thank you {members[helpers.registered_members[author]]}, you are now registered. '
-                              'If you\'d like to change the name used by the bot, use '
-                              f'`{helpers.PREFIX}changename <NAME>`\n\n{helpers.RULES_STRING}')
-                helpers.log(f'{helpers.registered_members[author]} is now registered ({len(helpers.registered_members)} total)')
-        else:
-            output_str = f'Looks like you\'re not a member yet, please become a member here: {helpers.JOIN_LINK}'
+        if student_number not in members:
+            await context.send(f'Looks like you\'re not a member yet, please become a member here: {helpers.JOIN_LINK}')
             helpers.log(f'{context.author.name} has failed to register because they are not a member')
+            return
+
+        if author in helpers.registered_members:
+            output_str = f'Looks like your Discord username is already registered to {helpers.registered_members[author]}'
+        elif student_number in helpers.registered_members.values():
+            output_str = ('Looks like your student ID is already registered to someone else, '
+                          'please contact a committee member')
+            other_user_id = [key for key, value in helpers.registered_members.items() if value == student_number][0]
+            other_user = await self.bot.fetch_user(other_user_id).name
+            helpers.log(f'{context.author} tried to register student ID {student_number}, '
+                f'but it\'s already registered to {other_user}')
+        else:
+            helpers.registered_members[author] = student_number
+            output_str = (f'Thank you {members[helpers.registered_members[author]]}, you are now registered. '
+                          'If you\'d like to change the name used by the bot, use '
+                          f'`{helpers.PREFIX}changename <NAME>`\n\n{helpers.RULES_STRING}')
+            helpers.log(f'{helpers.registered_members[author]} is now registered ({len(helpers.registered_members)} total)')
 
         helpers.save_voters()
         await context.send(output_str)
