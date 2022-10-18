@@ -49,6 +49,11 @@ class Voting(commands.Cog):
 
         helpers.save_voters()
         await context.send(output_str)
+        if helpers.current_live_post:
+            await context.send(f'Voting has already begun for the {helpers.current_live_post[0]} of {helpers.current_live_post[1]}. Here is your ballot paper for this {helpers.current_live_post[0]}, but you may not have long to vote!')
+            admin = self.bot.get_cog('Admin')
+            await admin.distribute_one_ballot(author)
+
 
     @commands.command(name='submit', help=f'Submits your vote - DM Only. Usage: {helpers.PREFIX}submit <VOTING CODE>',
                  usage='<VOTING CODE>')
@@ -100,6 +105,7 @@ class Voting(commands.Cog):
                     helpers.voted.append(author)
                 await context.send('Your vote was successfully cast')
                 helpers.log(f'Votes cast: {len(helpers.votes)} - Votes not yet cast: {len(helpers.registered_members)-len(helpers.votes)}')
+
 
     @commands.command(name='validate', help=f'Checks to see if your vote will be accepted - DM Only. Usage: {helpers.PREFIX}validate')
     @commands.dm_only()

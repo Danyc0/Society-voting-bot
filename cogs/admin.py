@@ -167,6 +167,17 @@ class Admin(commands.Cog):
             helpers.voting_messages[user.id].append((option, message.id))
 
 
+    async def distribute_one_ballot(self, voter):
+        if helpers.current_live_post[0] == 'POST':
+            num_candidates = len(helpers.standing[helpers.current_live_post[1]])
+            max_react = list(helpers.EMOJI_LOOKUP)[num_candidates-1]
+            self.bot.loop.create_task(self.distribute_post_ballot(voter, helpers.current_live_post[1], num_candidates, max_react))
+        elif helpers.current_live_post[0] == 'REFERENDUM':
+            self.bot.loop.create_task(self.distribute_referenda_ballot(voter, helpers.current_live_post[1]))
+        else:
+            helpers.log(f'Ballot attempted to be distributed to {voter} but there is no current live post (should never happen)') 
+
+
     @commands.command(name='end', help=f'Ends the election for the currently live post - Committee Only. Usage: {helpers.PREFIX}end')
     @checkers.public_admin_check()
     async def end(self, context):
