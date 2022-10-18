@@ -5,3 +5,4 @@ TODO
 cogs/__pycache__
 utils/__pycache__
 *.bak
+*.swp
