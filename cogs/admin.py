@@ -91,6 +91,19 @@ class Admin(commands.Cog):
         helpers.log(f'Voting has now begun for: {post}')
 
         if type == 'POST':
+            candidates = list(helpers.standing[post].items())
+            if len(candidates) == 1:
+                if candidates[0][0] == 0:
+                    await context.send('There are no candidates up for election, therefore no election will take place')
+                    helpers.log('There were no candidates, so no election took place')
+                else:
+                    await context.send('There is only one candidate up for election, therefore no election will take place\n'
+                    f'The winning candidate for the post of {post} is: {candidates[0][1][0]}')
+                    helpers.log(f'There was only one candidate, so no election took place and {candidates[0][1][0]} was crowned the winner')
+                async with helpers.current_live_post_lock.writer_lock:
+                    helpers.current_live_post = None
+                return
+
             await self.distribute_all_post_ballots(post)
 
             await context.send(f'Voting has now begun for: {post}\n'
