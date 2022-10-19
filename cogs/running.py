@@ -42,6 +42,7 @@ class Running(commands.Cog):
                                f'use `{helpers.PREFIX}posts` to see the posts up for election')
             return
         post = matching_posts[0]
+        committee_message = ''
         async with helpers.current_live_post_lock.reader_lock:
             if helpers.current_live_post:
                 if post == helpers.current_live_post[1]:
@@ -68,6 +69,7 @@ class Running(commands.Cog):
                                   'secretary ASAP to sort out alternative arrangements.')
                     helpers.log(f'{context.author.name}({helpers.registered_members[author]}) is now standing for {post}')
                     helpers.email_secretary(members[helpers.registered_members[author]], post)
+                    committee_message = f'{context.author.name} ({helpers.registered_members[author]}) is now standing for {post}'
             else:
                 output_str = ('Looks like you\'re not registered yet, '
                               f'please register using `{helpers.PREFIX}register <STUDENT NUMBER>`')
@@ -75,6 +77,9 @@ class Running(commands.Cog):
 
         helpers.save_standing()
         await context.send(output_str)
+        if committee_message:
+            committee_channel = await self.bot.fetch_channel(helpers.COMMITTEE_CHANNEL_ID)
+            await committee_channel.send(committee_message)
 
     @commands.command(name='standdown', help=f'Stand down from running for a post - DM Only. Usage: {helpers.PREFIX}standdown <POST>',
                  usage='<POST>')
@@ -104,6 +109,8 @@ class Running(commands.Cog):
 
         helpers.log(f'{helpers.registered_members[author]} has stood down from standing for {post}')
         await context.send(f'You have stood down from running for {post}')
+        committee_channel = await self.bot.fetch_channel(helpers.COMMITTEE_CHANNEL_ID)
+        await committee_channel.send(f'{context.author.name} ({helpers.registered_members[author]}) has stood down from standing for {post}')
 
     @commands.command(name='changename', help='Change your name as used by the bot - DM Only. '
                                          f'Usage: {helpers.PREFIX}changename <NAME>', usage='<NAME>')
